@@ -18,6 +18,9 @@ export async function login(req, res) {
     if (!user || user.password !== password) {
       return res.status(401).json({ error: 'Invalid username or password' });
     }
+    if (user.isActive === false) {
+      return res.status(403).json({ error: 'Your account has been deactivated. Please contact the administrator.' });
+    }
     res.json({
       success: true,
       user: {
@@ -194,6 +197,26 @@ export async function changePassword(req, res) {
     res.json({ success: true, message: 'Password changed successfully' });
   } catch (error) {
     console.error('Change password error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+export async function toggleMentorStatus(req, res) {
+  const { username } = req.params;
+  try {
+    const user = await User.findOne({ username, role: 'mentor' });
+    if (!user) {
+      return res.status(404).json({ error: 'Mentor not found' });
+    }
+    user.isActive = !user.isActive;
+    await user.save();
+    res.json({ 
+      success: true, 
+      message: `Mentor ${user.isActive ? 'activated' : 'deactivated'} successfully`,
+      isActive: user.isActive
+    });
+  } catch (error) {
+    console.error('Toggle mentor status error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 }

@@ -1,6 +1,10 @@
 import { Order } from '../models/Order.js';
 import { Registration } from '../models/Registration.js';
+import { Conference } from '../models/Conference.js';
+import { Webinar } from '../models/Webinar.js';
 import { sendMail } from '../services/mail.js';
+import { emailTemplate } from '../services/emailTemplates.js';
+import { generateRegistrationPDF } from '../services/pdfGenerator.js';
 import {
   createRazorpayOrder,
   verifyRazorpaySignature,
@@ -13,6 +17,13 @@ const CATEGORY_PRICING = {
   'Industry Delegate': 52000,
   'Virtual Attendee': 14500
 };
+
+/** Fetch the full event document for email branding. */
+async function fetchFullEvent(eventId, eventType) {
+  if (!eventId) return null;
+  const Model = eventType === 'webinar' ? Webinar : Conference;
+  return Model.findById(eventId).lean();
+}
 
 export async function listOrders(req, res) {
   const { eventId, eventType } = req.query;
@@ -114,23 +125,52 @@ export async function verifyOrder(req, res) {
     await order.save();
 
     // Sync the linked registration's payment status
+    let registration = null;
     if (order.registrationId) {
-      await Registration.updateOne({ _id: order.registrationId }, { paymentStatus: 'paid' });
+      registration = await Registration.findByIdAndUpdate(
+        order.registrationId,
+        { paymentStatus: 'paid' },
+        { new: true }
+      ).lean();
     }
 
     if (order.email) {
+      const fullEvent = await fetchFullEvent(order.eventId, order.eventType);
+
+      // Generate PDF receipt
+      let pdfBuffer = null;
+      try {
+        pdfBuffer = await generateRegistrationPDF({ registration, order, event: fullEvent });
+      } catch (pdfErr) {
+        console.error('[PDF] Generation failed, sending email without attachment:', pdfErr);
+      }
+
+      const attachments = pdfBuffer
+        ? [{ filename: `Registration-Confirmation-${order.name?.replace(/\s+/g, '-') || 'receipt'}.pdf`, content: pdfBuffer }]
+        : [];
+
       await sendMail({
         to: order.email,
-        subject: `Payment confirmed${order.eventTitle ? ` — ${order.eventTitle}` : ''}`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto;">
-            <h2 style="color: #0e7490;">Payment confirmed</h2>
+        subject: `Payment confirmed — ${order.eventTitle || 'Stream Conferences'}`,
+        html: emailTemplate({
+          heading: 'Payment confirmed',
+          event: fullEvent,
+          preheader: `Your payment of ₹${(order.amount / 100).toFixed(2)} for ${order.eventTitle || 'the event'} has been received.`,
+          body: `
             <p>Hi ${order.name},</p>
-            <p>Your payment of <strong>₹${(order.amount / 100).toFixed(2)}</strong> has been received${order.eventTitle ? ` for <strong>${order.eventTitle}</strong>` : ''}.</p>
-            <p>You are now fully registered. A confirmation email with event details will follow.</p>
-          </div>
-        `,
-        text: `Hi ${order.name},\n\nYour payment of ₹${(order.amount / 100).toFixed(2)} has been received${order.eventTitle ? ` for ${order.eventTitle}` : ''}. You are now fully registered.\n`
+            <p>Your payment of <strong>₹${(order.amount / 100).toFixed(2)}</strong> has been received for <strong>${order.eventTitle || 'the event'}</strong>.</p>
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:14px 18px; margin:18px 0; font-size:14px;">
+              <div><strong style="color:#0e7490;">Category:</strong> ${order.category || '—'}</div>
+              <div><strong style="color:#0e7490;">Payment ID:</strong> ${paymentId}</div>
+              <div><strong style="color:#0e7490;">Order ID:</strong> ${orderId}</div>
+            </div>
+            <p>You are now fully registered. Please find your registration confirmation attached as a PDF.</p>
+            <p style="color:#64748b; font-size:13px;">This email serves as your payment receipt. Please keep it for your records.</p>
+          `,
+          footerText: `Thank you for registering. We look forward to seeing you at the event.`,
+        }),
+        text: `Hi ${order.name},\n\nYour payment of ₹${(order.amount / 100).toFixed(2)} has been received for ${order.eventTitle || 'the event'}.\n\nCategory: ${order.category}\nPayment ID: ${paymentId}\nOrder ID: ${orderId}\n\nYou are now fully registered. Your registration confirmation PDF is attached.\n`,
+        attachments
       });
     }
 

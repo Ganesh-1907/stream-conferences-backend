@@ -1,8 +1,7 @@
 import mongoose from 'mongoose';
 import { User } from './models/User.js';
 import { Conference } from './models/Conference.js';
-import { Webinar } from './models/Webinar.js';
-import { generateSlug } from './services/slug.js';
+import { generateSlug, sanitizeSubdomain } from './services/slug.js';
 
 const MONGO_URI = process.env.DATABASE_URL || 'mongodb://localhost:27017/stream-conf';
 
@@ -12,6 +11,7 @@ export async function connectDB() {
     console.log(`[Database] Connected to MongoDB at: ${MONGO_URI}`);
     await seedUsers();
     await migrateEventDates();
+    await migrateEventSites();
   } catch (error) {
     console.error('[Database] Connection error:', error);
     process.exit(1);
@@ -32,13 +32,6 @@ async function migrateEventDates() {
     }
     if (confs.length) console.log(`[Database] Migrated eventDate for ${confs.length} conference(s)`);
 
-    const webs = await Webinar.find({ eventDate: { $exists: false } });
-    for (const w of webs) {
-      w.eventDate = w._doc && w._doc.date === 'past' ? pastDate : upcomingDate;
-      await w.save();
-    }
-    if (webs.length) console.log(`[Database] Migrated eventDate for ${webs.length} webinar(s)`);
-
     // Backfill slugs for documents created before the slug field existed
     const confsNoSlug = await Conference.find({ slug: { $exists: false } });
     for (const c of confsNoSlug) {
@@ -46,15 +39,31 @@ async function migrateEventDates() {
       await c.save();
     }
     if (confsNoSlug.length) console.log(`[Database] Backfilled slug for ${confsNoSlug.length} conference(s)`);
-
-    const websNoSlug = await Webinar.find({ slug: { $exists: false } });
-    for (const w of websNoSlug) {
-      w.slug = generateSlug(w.title || 'webinar', 'web');
-      await w.save();
-    }
-    if (websNoSlug.length) console.log(`[Database] Backfilled slug for ${websNoSlug.length} webinar(s)`);
   } catch (err) {
     console.error('[Database] eventDate migration failed:', err);
+  }
+}
+
+// Backfill subdomain + startDate/endDate for legacy events so subdomain routing works on existing data.
+async function migrateEventSites() {
+  try {
+    const confs = await Conference.find({ subdomain: { $exists: false } });
+    for (const c of confs) {
+      const base = sanitizeSubdomain(c.subdomain || c.slug || c.title || 'conference');
+      let candidate = base;
+      let suffix = 2;
+      while (await Conference.findOne({ subdomain: candidate, _id: { $ne: c._id } })) {
+        candidate = `${base}-${suffix}`;
+        suffix += 1;
+      }
+      c.subdomain = candidate;
+      if (!c.startDate) c.startDate = c.eventDate;
+      if (!c.endDate) c.endDate = c.eventDate;
+      await c.save();
+    }
+    if (confs.length) console.log(`[Database] Backfilled subdomain for ${confs.length} conference(s)`);
+  } catch (err) {
+    console.error('[Database] event site migration failed:', err);
   }
 }
 

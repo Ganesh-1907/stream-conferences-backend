@@ -1,21 +1,15 @@
 import { Contact } from '../models/Contact.js';
-import { Conference } from '../models/Conference.js';
-import { Webinar } from '../models/Webinar.js';
+import { resolveEventByRef } from '../services/eventResolver.js';
 
 async function resolveEvent(eventId, eventType, eventSlug) {
   if (eventId) {
-    if (eventType === 'webinar') {
-      const w = await Webinar.findById(eventId).select('title slug _id').lean();
-      if (w) return { eventId: w._id.toString(), eventType: 'webinar', eventTitle: w.title, eventSlug: w.slug };
-    }
-    const c = await Conference.findById(eventId).select('title slug _id').lean();
-    if (c) return { eventId: c._id.toString(), eventType: 'conference', eventTitle: c.title, eventSlug: c.slug };
+    const resolved = await resolveEventByRef(eventId);
+    if (!resolved) return null;
+    if (eventType && resolved.eventType !== eventType) return null;
+    return resolved;
   }
   if (eventSlug) {
-    const c = await Conference.findOne({ slug: eventSlug }).select('title slug _id').lean();
-    if (c) return { eventId: c._id.toString(), eventType: 'conference', eventTitle: c.title, eventSlug: c.slug };
-    const w = await Webinar.findOne({ slug: eventSlug }).select('title slug _id').lean();
-    if (w) return { eventId: w._id.toString(), eventType: 'webinar', eventTitle: w.title, eventSlug: w.slug };
+    return resolveEventByRef(eventSlug);
   }
   return null;
 }

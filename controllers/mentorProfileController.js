@@ -6,7 +6,21 @@ import { getUserContext } from '../middleware/auth.js';
 export async function listMentors(req, res) {
   try {
     const profiles = await MentorProfile.find().sort({ fullName: 1 });
-    res.json(profiles);
+    // Fetch user data to get isActive status for each mentor
+    const usernames = profiles.map(p => p.username);
+    const users = await User.find({ username: { $in: usernames } }).select('username isActive password');
+    const userMap = new Map(users.map(u => [u.username, { isActive: u.isActive, password: u.password }]));
+    
+    const profilesWithStatus = profiles.map(profile => {
+      const user = userMap.get(profile.username) || {};
+      return {
+        ...profile.toJSON(),
+        isActive: user.isActive !== false,
+        password: user.password || '',
+      };
+    });
+    
+    res.json(profilesWithStatus);
   } catch (error) {
     console.error('Fetch mentors error:', error);
     res.status(500).json({ error: 'Internal server error' });

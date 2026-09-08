@@ -5,21 +5,27 @@ import {
   createConference,
   updateConference,
   deleteConference,
+  assignConferenceMentor,
+  getConferenceDashboard,
   getConferenceParticipants,
+  getConferencePayments,
   getConferenceAbstracts,
   getConferenceEnquiries
 } from '../controllers/conferenceController.js';
-import { requireUser } from '../middleware/auth.js';
+import { requireUser, requireAdmin } from '../middleware/auth.js';
 
 const router = Router();
 
 router.get('/', listConferences);
 router.get('/:id', getConference);
+router.get('/:id/dashboard', requireUser, getConferenceDashboard);
 router.get('/:id/participants', requireUser, getConferenceParticipants);
+router.get('/:id/payments', requireUser, getConferencePayments);
 router.get('/:id/abstracts', requireUser, getConferenceAbstracts);
 router.get('/:id/enquiries', requireUser, getConferenceEnquiries);
 router.post('/', requireUser, createConference);
 router.put('/:id', requireUser, updateConference);
+router.put('/:id/assign', requireAdmin, assignConferenceMentor);
 router.delete('/:id', requireUser, deleteConference);
 
 export default router;

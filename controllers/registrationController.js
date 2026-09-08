@@ -2,22 +2,23 @@ import { Registration } from '../models/Registration.js';
 import { Conference } from '../models/Conference.js';
 import { Webinar } from '../models/Webinar.js';
 import { sendMail } from '../services/mail.js';
-
-const REGISTRATION_BASE = process.env.REGISTRATION_BASE || 'http://localhost:5174/register';
-
-function registrationLink(event) {
-  return `${REGISTRATION_BASE}?event=${encodeURIComponent(event?.eventSlug || event?.eventCustomId || event?.eventId || '')}`;
-}
+import { resolveEventByRef } from '../services/eventResolver.js';
+import { registrationLink } from '../services/eventLink.js';
+import { emailTemplate } from '../services/emailTemplates.js';
 
 async function resolveEvent(eventId, eventType) {
-  if (eventType === 'webinar') {
-    const webinar = await Webinar.findById(eventId).select('title slug _id eventDate').lean();
-    if (!webinar) return null;
-    return { eventId: webinar._id.toString(), eventType: 'webinar', eventTitle: webinar.title, eventSlug: webinar.slug };
-  }
-  const conf = await Conference.findById(eventId).select('title slug _id eventDate').lean();
-  if (!conf) return null;
-  return { eventId: conf._id.toString(), eventType: 'conference', eventTitle: conf.title, eventSlug: conf.slug };
+  if (!eventId) return null;
+  const resolved = await resolveEventByRef(eventId);
+  if (!resolved) return null;
+  if (eventType && resolved.eventType !== eventType) return null;
+  return resolved;
+}
+
+/** Fetch the full event document for email branding. */
+async function fetchFullEvent(eventId, eventType) {
+  if (!eventId) return null;
+  const Model = eventType === 'webinar' ? Webinar : Conference;
+  return Model.findById(eventId).lean();
 }
 
 export async function listRegistrations(req, res) {
@@ -46,9 +47,10 @@ export async function registerParticipant(req, res) {
       const type = eventType || 'conference';
       event = await resolveEvent(eventId, type);
     } else if (eventSlug) {
-      // resolve by slug across conference + webinar
-      event = await resolveBySlug(eventSlug);
+      event = await resolveEventByRef(eventSlug);
     }
+
+    const fullEvent = await fetchFullEvent(event?.eventId, event?.eventType);
 
     const item = await Registration.create({
       name,
@@ -65,23 +67,33 @@ export async function registerParticipant(req, res) {
     });
 
     const link = event ? registrationLink(event) : null;
-    const registrationHtml = link
-      ? `<p>Complete your registration here: <a href="${link}">${link}</a></p>`
-      : `<p>Your registration has been recorded. Our secretariat will contact you with further details.</p>`;
+
+    // Build fee info for email
+    const fees = fullEvent?.fees || [];
+    const matchedFee = fees.find((f) => f.label === category);
+    const feeHtml = fees.length
+      ? `<div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:14px 18px; margin:18px 0;">
+          <strong style="color:#0e7490;">Fee for ${category}:</strong> ₹${matchedFee ? matchedFee.amount : fees[0]?.amount || '—'}
+        </div>`
+      : '';
 
     await sendMail({
       to: email,
-      subject: `Registration received${event?.eventTitle ? ` — ${event.eventTitle}` : ''}`,
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto;">
-          <h2 style="color: #0e7490;">Thank you for registering</h2>
+      subject: `Registration received — ${event?.eventTitle || 'Stream Conferences'}`,
+      html: emailTemplate({
+        heading: 'Thank you for registering',
+        event: fullEvent,
+        preheader: `Your registration for ${event?.eventTitle || 'the event'} has been received.`,
+        body: `
           <p>Hi ${name},</p>
-          <p>We have received your registration${event?.eventTitle ? ` for <strong>${event.eventTitle}</strong>` : ''}.</p>
-          ${registrationHtml}
-          <p style="color: #666; font-size: 13px;">Your registration is confirmed once payment is completed. Keep this email for your records.</p>
-        </div>
-      `,
-      text: `Hi ${name},\n\nThank you for registering${event?.eventTitle ? ` for ${event.eventTitle}` : ''}.\n${link ? `Complete your registration here: ${link}` : 'Our secretariat will contact you with further details.'}\n`
+          <p>We have received your registration for <strong>${event?.eventTitle || 'the event'}</strong> under the <strong>${category}</strong> category.</p>
+          ${feeHtml}
+          ${link ? `<p style="margin:24px 0;"><a href="${link}" style="display:inline-block; background:#0e7490; color:#ffffff; text-decoration:none; padding:12px 24px; border-radius:6px; font-weight:bold;">Complete Payment</a></p>` : `<p>Your registration has been recorded. Our secretariat will contact you with further details.</p>`}
+          <p style="color:#64748b; font-size:13px;">Your registration is confirmed once payment is completed. Keep this email for your records.</p>
+        `,
+        footerText: `For queries, please contact the event secretariat.`,
+      }),
+      text: `Hi ${name},\n\nThank you for registering for ${event?.eventTitle || 'the event'} under ${category} category.\n${link ? `\nComplete payment: ${link}\n` : '\nOur secretariat will contact you with further details.\n'}\nYour registration is confirmed once payment is completed.\n`
     });
 
     res.status(201).json(item);
@@ -91,39 +103,11 @@ export async function registerParticipant(req, res) {
   }
 }
 
-async function resolveBySlug(slugOrId) {
-  const isObjectId = /^[0-9a-fA-F]{24}$/.test(slugOrId);
-  if (isObjectId) {
-    const conf = await Conference.findById(slugOrId).select('title slug _id eventId').lean();
-    if (conf) return { eventId: conf._id.toString(), eventType: 'conference', eventTitle: conf.title, eventSlug: conf.slug, eventCustomId: conf.eventId };
-    const web = await Webinar.findById(slugOrId).select('title slug _id eventId').lean();
-    if (web) return { eventId: web._id.toString(), eventType: 'webinar', eventTitle: web.title, eventSlug: web.slug, eventCustomId: web.eventId };
-  } else {
-    const caseInsensitiveRegex = new RegExp(`^${slugOrId}$`, 'i');
-    const conf = await Conference.findOne({
-      $or: [
-        { eventId: caseInsensitiveRegex },
-        { slug: slugOrId }
-      ]
-    }).select('title slug _id eventId').lean();
-    if (conf) return { eventId: conf._id.toString(), eventType: 'conference', eventTitle: conf.title, eventSlug: conf.slug, eventCustomId: conf.eventId };
-
-    const web = await Webinar.findOne({
-      $or: [
-        { eventId: caseInsensitiveRegex },
-        { slug: slugOrId }
-      ]
-    }).select('title slug _id eventId').lean();
-    if (web) return { eventId: web._id.toString(), eventType: 'webinar', eventTitle: web.title, eventSlug: web.slug, eventCustomId: web.eventId };
-  }
-  return null;
-}
-
-// Resolve a registration link/slug to the underlying event (for the user website)
+// Resolve a registration link/slug/subdomain to the underlying event (for the user website)
 export async function resolveRegistrationLink(req, res) {
   const { slug } = req.params;
   try {
-    const event = await resolveBySlug(slug);
+    const event = await resolveEventByRef(slug);
     if (!event) {
       return res.status(404).json({ error: 'Event not found' });
     }

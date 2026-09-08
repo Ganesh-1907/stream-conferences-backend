@@ -25,7 +25,7 @@ export const mailEnabled = Boolean(transporter);
  * Send an email. Returns { sent, info, error } so callers can safely ignore
  * delivery failures without crashing the request flow.
  */
-export async function sendMail({ to, subject, html, text }) {
+export async function sendMail({ to, subject, html, text, attachments }) {
   if (!transporter) {
     console.warn('[Mail] SMTP not configured. Skipping email:', subject);
     return { sent: false, error: 'SMTP not configured' };
@@ -36,7 +36,8 @@ export async function sendMail({ to, subject, html, text }) {
       to,
       subject,
       html,
-      text
+      text,
+      attachments
     });
     console.log(`[Mail] Sent "${subject}" to ${to}: ${info.messageId}`);
     return { sent: true, info };

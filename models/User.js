@@ -7,7 +7,8 @@ const userSchema = new mongoose.Schema({
   role: { type: String, required: true, enum: ['admin', 'mentor'] },
   resetToken: { type: String },
   resetTokenExpiry: { type: Date },
-  isTempPassword: { type: Boolean, default: false }
+  isTempPassword: { type: Boolean, default: false },
+  isActive: { type: Boolean, default: true }
 });
 
 export const User = mongoose.models.User || mongoose.model('User', userSchema);
