@@ -13,11 +13,14 @@ import {
   getConferenceEnquiries
 } from '../controllers/conferenceController.js';
 import { requireUser, requireAdmin } from '../middleware/auth.js';
+import { listCohortsForCourse, createCohortForCourse } from '../controllers/cohortController.js';
 
 const router = Router();
 
 router.get('/', listConferences);
 router.get('/:id', getConference);
+router.get('/:id/cohorts', listCohortsForCourse('conference'));
+router.post('/:id/cohorts', requireUser, createCohortForCourse('conference'));
 router.get('/:id/dashboard', requireUser, getConferenceDashboard);
 router.get('/:id/participants', requireUser, getConferenceParticipants);
 router.get('/:id/payments', requireUser, getConferencePayments);

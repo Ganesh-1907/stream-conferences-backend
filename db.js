@@ -1,7 +1,9 @@
 import mongoose from 'mongoose';
 import { User } from './models/User.js';
 import { Conference } from './models/Conference.js';
+import { Webinar } from './models/Webinar.js';
 import { generateSlug, sanitizeSubdomain } from './services/slug.js';
+import { ensureInitialCohort, backfillCohortContent } from './services/cohortService.js';
 
 const MONGO_URI = process.env.DATABASE_URL || 'mongodb://localhost:27017/stream-conf';
 
@@ -12,6 +14,7 @@ export async function connectDB() {
     await seedUsers();
     await migrateEventDates();
     await migrateEventSites();
+    await migrateCourseCohorts();
   } catch (error) {
     console.error('[Database] Connection error:', error);
     process.exit(1);
@@ -64,6 +67,36 @@ async function migrateEventSites() {
     if (confs.length) console.log(`[Database] Backfilled subdomain for ${confs.length} conference(s)`);
   } catch (err) {
     console.error('[Database] event site migration failed:', err);
+  }
+}
+
+// Backfill an initial cohort (Year = course year, Batch = 1) for every course that has none.
+async function migrateCourseCohorts() {
+  try {
+    let conferenceCount = 0;
+    const conferences = await Conference.find({ currentCohortId: null });
+    for (const c of conferences) {
+      await ensureInitialCohort('conference', c);
+      conferenceCount += 1;
+    }
+
+    let webinarCount = 0;
+    const webinars = await Webinar.find({ currentCohortId: null });
+    for (const w of webinars) {
+      await ensureInitialCohort('webinar', w);
+      webinarCount += 1;
+    }
+
+    if (conferenceCount || webinarCount) {
+      console.log(`[Database] Backfilled initial cohort for ${conferenceCount} conference(s) and ${webinarCount} webinar(s)`);
+    }
+
+    const contentCount = await backfillCohortContent();
+    if (contentCount) {
+      console.log(`[Database] Backfilled cohort content for ${contentCount} cohort(s)`);
+    }
+  } catch (err) {
+    console.error('[Database] course cohort migration failed:', err);
   }
 }
 

@@ -26,11 +26,12 @@ async function fetchFullEvent(eventId, eventType) {
 }
 
 export async function listOrders(req, res) {
-  const { eventId, eventType } = req.query;
+  const { eventId, eventType, cohortId } = req.query;
   try {
     const query = {};
     if (eventId) query.eventId = eventId;
     if (eventType) query.eventType = eventType;
+    if (cohortId) query.cohortId = cohortId;
     const list = await Order.find(query).sort({ createdAt: -1 });
     res.json(list);
   } catch (error) {
@@ -40,7 +41,7 @@ export async function listOrders(req, res) {
 }
 
 export async function createOrder(req, res) {
-  const { name, email, phone, category, amount, registrationId, eventId, eventType, eventTitle, eventSlug } = req.body;
+  const { name, email, phone, category, amount, registrationId, eventId, eventType, eventTitle, eventSlug, cohortId } = req.body;
   try {
     if (!name || !email || !category) {
       return res.status(400).json({ error: 'Missing required order fields (name, email, category)' });
@@ -70,6 +71,7 @@ export async function createOrder(req, res) {
       eventType: eventType || 'conference',
       eventTitle: eventTitle || null,
       eventSlug: eventSlug || null,
+      cohortId: cohortId || null,
       status: 'pending',
       mode: created.mode
     });

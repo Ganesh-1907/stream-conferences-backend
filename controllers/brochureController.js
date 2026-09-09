@@ -2,11 +2,12 @@ import { BrochureRequest } from '../models/BrochureRequest.js';
 import { resolveEventByRef } from '../services/eventResolver.js';
 
 export async function listBrochureRequests(req, res) {
-  const { eventId, eventType } = req.query;
+  const { eventId, eventType, cohortId } = req.query;
   try {
     const query = {};
     if (eventId) query.eventId = eventId;
     if (eventType) query.eventType = eventType;
+    if (cohortId) query.cohortId = cohortId;
     const list = await BrochureRequest.find(query).sort({ createdAt: -1 });
     res.json(list);
   } catch (error) {
@@ -16,7 +17,7 @@ export async function listBrochureRequests(req, res) {
 }
 
 export async function createBrochureRequest(req, res) {
-  const { firstName, lastName, email, phone, institution, country, eventId, eventType, eventSlug } = req.body;
+  const { firstName, lastName, email, phone, institution, country, eventId, eventType, eventSlug, cohortId } = req.body;
   try {
     if (!firstName || !lastName || !email) {
       return res.status(400).json({ error: 'Missing required fields (firstName, lastName, email)' });
@@ -41,7 +42,8 @@ export async function createBrochureRequest(req, res) {
       eventId: event?.eventId || null,
       eventType: event?.eventType || null,
       eventTitle: event?.eventTitle || null,
-      eventSlug: event?.eventSlug || null
+      eventSlug: event?.eventSlug || null,
+      cohortId: cohortId || null
     });
 
     res.status(201).json(item);

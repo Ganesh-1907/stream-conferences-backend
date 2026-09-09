@@ -1,9 +1,13 @@
 import mongoose from 'mongoose';
+import { nextEventId } from '../services/idGenerator.js';
 
-const feeSchema = new mongoose.Schema({
-  label: { type: String, required: true },
-  amount: { type: Number, required: true }
-});
+const feeEntrySchema = new mongoose.Schema({
+  type: { type: String, required: true },
+  dateLabel: { type: String, default: '' },
+  usd: { type: Number, default: 0 },
+  gbp: { type: Number, default: 0 },
+  eur: { type: Number, default: 0 }
+}, { _id: false });
 
 const trackReferenceLinkSchema = new mongoose.Schema({
   label: { type: String, default: '' },
@@ -28,6 +32,7 @@ const itineraryItemSchema = new mongoose.Schema({
 
 const speakerSchema = new mongoose.Schema({
   name: { type: String, required: true },
+  degree: { type: String, default: '' },
   designation: { type: String },
   organization: { type: String },
   bio: { type: String },
@@ -75,6 +80,7 @@ const conferenceSchema = new mongoose.Schema({
   slug: { type: String, required: true, unique: true },
   description: { type: String },
   theme: { type: String, default: '' },
+  themeColor: { type: String, default: '' },
   day: { type: String, default: '' },
   month: { type: String, default: '' },
   location: { type: String, default: '' },
@@ -92,7 +98,7 @@ const conferenceSchema = new mongoose.Schema({
   bannerUrl: { type: String },
   logoUrl: { type: String },
   headerBanners: { type: [String], default: [] },
-  fees: { type: [feeSchema], default: [] },
+  fees: { type: [feeEntrySchema], default: [] },
   tracks: { type: [trackSchema], default: [] },
   organizerContact: {
     name: { type: String },
@@ -102,11 +108,11 @@ const conferenceSchema = new mongoose.Schema({
     address: { type: String }
   },
   eventId: { type: String, unique: true },
+  currentCohortId: { type: mongoose.Schema.Types.ObjectId, ref: 'CourseCohort', default: null },
   announcedBy: { type: String, required: true },
   createdAt: { type: Date, default: Date.now },
   
   // New fields for conference website tabs
-  itinerary: { type: [itineraryItemSchema], default: [] },
   speakers: { type: [speakerSchema], default: [] },
   program: { type: [programDaySchema], default: [] },
   faqs: { type: [faqSchema], default: [] },
@@ -114,23 +120,25 @@ const conferenceSchema = new mongoose.Schema({
   exhibitors: { type: [partnerSchema], default: [] },
   partners: { type: [partnerSchema], default: [] },
   guidelines: { type: String },
+  scientificProgramUrl: { type: String, default: '' },
   termsAndConditions: { type: String },
   organizingCommittee: { type: [organizingCommitteeMemberSchema], default: [] },
   
-  // Venue details for venue tab
+  // Venue details for schedule and venue tab
   venueDetails: {
+    venueId: { type: mongoose.Schema.Types.ObjectId, ref: 'Venue', default: null },
     name: { type: String },
-    address: { type: String },
-    city: { type: String },
-    state: { type: String },
-    country: { type: String },
-    pincode: { type: String },
+    address: { type: String, default: '' },
+    locationUrl: { type: String, default: '' },
+    startDate: { type: Date, default: null },
+    endDate: { type: Date, default: null },
+    startTime: { type: String },
+    endTime: { type: String },
+    mainImage: { type: String, default: '' },
+    subImages: { type: [String], default: [] },
     description: { type: String },
     images: { type: [String], default: [] },
-    mapUrl: { type: String },
-    directions: { type: String },
-    parking: { type: String },
-    accommodation: { type: String }
+    moreInfo: { type: String }
   }
 }, { toJSON: { virtuals: true }, toObject: { virtuals: true } });
 
@@ -150,18 +158,7 @@ conferenceSchema.pre('save', async function (next) {
   }
 
   if (!this.eventId) {
-    const latest = await this.constructor
-      .findOne({ eventId: /^[Cc]\d+$/ })
-      .sort({ eventId: -1 })
-      .exec();
-    let nextNum = 1000001;
-    if (latest && latest.eventId) {
-      const match = latest.eventId.match(/^[Cc](\d+)$/);
-      if (match) {
-        nextNum = parseInt(match[1], 10) + 1;
-      }
-    }
-    this.eventId = `C${nextNum}`;
+    this.eventId = await nextEventId(this.constructor, 'SCC');
   }
   next();
 });

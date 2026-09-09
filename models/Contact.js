@@ -10,6 +10,7 @@ const contactSchema = new mongoose.Schema({
   eventType: { type: String, enum: ['conference', 'webinar'] },
   eventTitle: { type: String },
   eventSlug: { type: String },
+  cohortId: { type: String },
   message: { type: String, required: true },
   createdAt: { type: Date, default: Date.now }
 });

@@ -18,6 +18,7 @@ import peopleRoutes from './peopleRoutes.js';
 import chatRoutes from './chatRoutes.js';
 import eventRoutes from './eventRoutes.js';
 import brochureRoutes from './brochureRoutes.js';
+import cohortRoutes from './cohortRoutes.js';
 import { Conference } from '../models/Conference.js';
 import { Webinar } from '../models/Webinar.js';
 import { Blog } from '../models/Blog.js';
@@ -90,5 +91,6 @@ router.use('/people', peopleRoutes);
 router.use('/chat', chatRoutes);
 router.use('/events', eventRoutes);
 router.use('/brochure-requests', brochureRoutes);
+router.use('/cohorts', cohortRoutes);
 
 export default router;

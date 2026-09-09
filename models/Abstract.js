@@ -15,6 +15,7 @@ const abstractSchema = new mongoose.Schema({
   eventType: { type: String, enum: ['conference', 'webinar'], default: 'conference' },
   eventTitle: { type: String },
   eventSlug: { type: String },
+  cohortId: { type: String },
   status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
   reviewedAt: { type: Date },
   rejectionReason: { type: String },

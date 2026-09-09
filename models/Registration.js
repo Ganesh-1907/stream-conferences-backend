@@ -12,6 +12,7 @@ const registrationSchema = new mongoose.Schema({
   eventType: { type: String, enum: ['conference', 'webinar'], default: 'conference' },
   eventTitle: { type: String },
   eventSlug: { type: String },
+  cohortId: { type: String },
   paymentStatus: { type: String, enum: ['unpaid', 'paid', 'pending'], default: 'unpaid' },
   createdAt: { type: Date, default: Date.now }
 });

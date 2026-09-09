@@ -1,5 +1,6 @@
 import { Conference } from '../models/Conference.js';
 import { Webinar } from '../models/Webinar.js';
+import { CourseCohort } from '../models/CourseCohort.js';
 
 const OBJECT_ID = /^[0-9a-fA-F]{24}$/;
 
@@ -38,6 +39,17 @@ export async function resolveEventByRef(ref) {
 export async function findBySubdomain(subdomain) {
   if (!subdomain) return null;
   const ci = new RegExp(`^${escapeRegExp(subdomain)}$`, 'i');
+
+  // Cohort subdomains take priority (e.g. "event-2026").
+  const cohort = await CourseCohort.findOne({ subdomain: ci }).lean();
+  if (cohort) {
+    const Model = cohort.courseType === 'webinar' ? Webinar : Conference;
+    const course = await Model.findById(cohort.courseId).lean();
+    if (course) {
+      return normalize(course, cohort.courseType, cohort._id);
+    }
+  }
+
   const conf = await Conference.findOne({ subdomain: ci }).lean();
   if (conf) return normalize(conf, 'conference');
   const web = await Webinar.findOne({ subdomain: ci }).lean();
@@ -51,7 +63,7 @@ export async function resolveFullEvent(ref) {
   return findBySubdomain(normalized.subdomain) || resolveEventByRef(normalized.eventId);
 }
 
-function normalize(doc, eventType) {
+function normalize(doc, eventType, cohortId = null) {
   if (!doc) return null;
   return {
     eventId: doc._id.toString(),
@@ -61,6 +73,7 @@ function normalize(doc, eventType) {
     eventCustomId: doc.eventId,
     subdomain: doc.subdomain || null,
     startDate: doc.startDate || doc.eventDate || null,
-    endDate: doc.endDate || null
+    endDate: doc.endDate || null,
+    cohortId: cohortId ? cohortId.toString() : null,
   };
 }

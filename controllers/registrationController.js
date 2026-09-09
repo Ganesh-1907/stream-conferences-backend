@@ -22,11 +22,12 @@ async function fetchFullEvent(eventId, eventType) {
 }
 
 export async function listRegistrations(req, res) {
-  const { eventId, eventType } = req.query;
+  const { eventId, eventType, cohortId } = req.query;
   try {
     const query = {};
     if (eventId) query.eventId = eventId;
     if (eventType) query.eventType = eventType;
+    if (cohortId) query.cohortId = cohortId;
     const list = await Registration.find(query).sort({ createdAt: -1 });
     res.json(list);
   } catch (error) {
@@ -36,7 +37,7 @@ export async function listRegistrations(req, res) {
 }
 
 export async function registerParticipant(req, res) {
-  const { name, email, phone, institution, country, category, presentingAbstract, eventId, eventType, eventSlug } = req.body;
+  const { name, email, phone, institution, country, category, presentingAbstract, eventId, eventType, eventSlug, cohortId } = req.body;
   try {
     if (!name || !email || !institution || !country || !category) {
       return res.status(400).json({ error: 'Missing required registration fields' });
@@ -63,17 +64,18 @@ export async function registerParticipant(req, res) {
       eventId: event?.eventId || null,
       eventType: event?.eventType || null,
       eventTitle: event?.eventTitle || null,
-      eventSlug: event?.eventSlug || null
+      eventSlug: event?.eventSlug || null,
+      cohortId: cohortId || null
     });
 
     const link = event ? registrationLink(event) : null;
 
     // Build fee info for email
     const fees = fullEvent?.fees || [];
-    const matchedFee = fees.find((f) => f.label === category);
+    const matchedFee = fees.find((f) => f.type === category);
     const feeHtml = fees.length
       ? `<div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:14px 18px; margin:18px 0;">
-          <strong style="color:#0e7490;">Fee for ${category}:</strong> ₹${matchedFee ? matchedFee.amount : fees[0]?.amount || '—'}
+          <strong style="color:#0e7490;">Fee for ${category}:</strong> ${matchedFee ? `$${matchedFee.usd} USD / £${matchedFee.gbp} GBP / €${matchedFee.eur} EUR` : fees[0] ? `$${fees[0].usd} USD` : '—'}
         </div>`
       : '';
 

@@ -11,6 +11,7 @@ const brochureRequestSchema = new mongoose.Schema({
   eventType: { type: String, enum: ['conference', 'webinar'], default: 'conference' },
   eventTitle: { type: String },
   eventSlug: { type: String },
+  cohortId: { type: String },
   createdAt: { type: Date, default: Date.now }
 });
 

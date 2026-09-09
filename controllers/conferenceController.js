@@ -7,6 +7,7 @@ import { MentorProfile } from '../models/MentorProfile.js';
 import { getUserContext } from '../middleware/auth.js';
 import { generateSlug, sanitizeSubdomain, generateSubdomain } from '../services/slug.js';
 import { registrationLink } from '../services/eventLink.js';
+import { ensureInitialCohort, syncCurrentCohortContent } from '../services/cohortService.js';
 
 const SUBDOMAIN_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
 
@@ -106,11 +107,11 @@ export async function getConference(req, res) {
 export async function createConference(req, res) {
   const { username } = getUserContext(req);
   const {
-    title, description, theme, day, month, location, eventDate, startDate, endDate, slug,
+    title, description, theme, themeColor, day, month, location, eventDate, startDate, endDate, slug,
     startTime, endTime, brochureUrl, bannerUrl, logoUrl, headerBanners, fees, tracks, organizerContact,
     subdomain, venue, assignedMentor, venueAddress, venueMapUrl,
-    itinerary, speakers, program, faqs, sponsors, exhibitors, guidelines, termsAndConditions, venueDetails,
-    partners
+    itinerary, speakers, program, faqs, sponsors, exhibitors, guidelines, scientificProgramUrl, termsAndConditions, venueDetails,
+    organizingCommittee, partners
   } = req.body;
   try {
     if (!title) {
@@ -134,8 +135,9 @@ export async function createConference(req, res) {
 
     const item = await Conference.create({
       title,
-      description,
+      description: description || '',
       theme: theme || '',
+      themeColor: themeColor || '',
       day: day || '',
       month: month || '',
       location: location || '',
@@ -165,10 +167,14 @@ export async function createConference(req, res) {
       sponsors: finalPartners,
       exhibitors: finalPartners,
       guidelines: guidelines || '',
+      scientificProgramUrl: scientificProgramUrl || '',
       termsAndConditions: termsAndConditions || '',
       venueDetails: venueDetails || {},
+      organizingCommittee: Array.isArray(organizingCommittee) ? organizingCommittee : [],
       announcedBy: username
     });
+    const cohort = await ensureInitialCohort('conference', item);
+    if (cohort) item.currentCohortId = cohort._id;
     res.status(201).json(formatConference(item));
   } catch (error) {
     console.error('Create conference error:', error);
@@ -180,11 +186,11 @@ export async function updateConference(req, res) {
   const { role, username } = getUserContext(req);
   const { id } = req.params;
   const {
-    title, description, theme, day, month, location, eventDate, startDate, endDate, slug,
+    title, description, theme, themeColor, day, month, location, eventDate, startDate, endDate, slug,
     startTime, endTime, brochureUrl, bannerUrl, logoUrl, headerBanners, fees, tracks, organizerContact,
     subdomain, venue, assignedMentor, venueAddress, venueMapUrl,
-    itinerary, speakers, program, faqs, sponsors, exhibitors, guidelines, termsAndConditions, venueDetails,
-    partners
+    itinerary, speakers, program, faqs, sponsors, exhibitors, guidelines, scientificProgramUrl, termsAndConditions, venueDetails,
+    organizingCommittee, partners
   } = req.body;
   try {
     const item = await Conference.findById(id);
@@ -198,6 +204,7 @@ export async function updateConference(req, res) {
     item.title = title ?? item.title;
     item.description = description ?? item.description;
     item.theme = theme ?? item.theme;
+    if (themeColor !== undefined) item.themeColor = themeColor;
     item.day = day ?? item.day;
     item.month = month ?? item.month;
     item.location = location ?? item.location;
@@ -257,10 +264,13 @@ export async function updateConference(req, res) {
       if (partners === undefined && sponsors === undefined) item.partners = normalized;
     }
     if (guidelines !== undefined) item.guidelines = guidelines || '';
+    if (scientificProgramUrl !== undefined) item.scientificProgramUrl = scientificProgramUrl || '';
     if (termsAndConditions !== undefined) item.termsAndConditions = termsAndConditions || '';
     if (venueDetails !== undefined) item.venueDetails = venueDetails || {};
+    if (organizingCommittee !== undefined) item.organizingCommittee = Array.isArray(organizingCommittee) ? organizingCommittee : [];
 
     await item.save();
+    await syncCurrentCohortContent('conference', item);
     res.json(formatConference(item));
   } catch (error) {
     console.error('Update conference error:', error.message);
@@ -316,12 +326,16 @@ function conferenceAccessGuard(event, role, username) {
   return null;
 }
 
-async function loadParticipants(id, kind = 'conference') {
-  return Registration.find({ eventId: id, eventType: kind }).sort({ createdAt: -1 });
+async function loadParticipants(id, kind = 'conference', cohortId = null) {
+  const q = { eventId: id, eventType: kind };
+  if (cohortId) q.cohortId = cohortId;
+  return Registration.find(q).sort({ createdAt: -1 });
 }
 
-async function loadPayments(id, kind = 'conference') {
-  return Order.find({ eventId: id, eventType: kind }).sort({ createdAt: -1 });
+async function loadPayments(id, kind = 'conference', cohortId = null) {
+  const q = { eventId: id, eventType: kind };
+  if (cohortId) q.cohortId = cohortId;
+  return Order.find(q).sort({ createdAt: -1 });
 }
 
 function paymentStats(payments) {
@@ -341,13 +355,14 @@ function paymentStats(payments) {
 export async function getConferenceDashboard(req, res) {
   const { role, username } = getUserContext(req);
   const { id } = req.params;
+  const { cohortId } = req.query;
   try {
     const event = await Conference.findById(id).select('title eventId assignedMentor announcedBy');
     const guard = conferenceAccessGuard(event, role, username);
     if (guard) return res.status(guard.status).json({ error: guard.error });
     const [participants, payments] = await Promise.all([
-      loadParticipants(id, 'conference'),
-      loadPayments(id, 'conference'),
+      loadParticipants(id, 'conference', cohortId),
+      loadPayments(id, 'conference', cohortId),
     ]);
     res.json({
       eventId: id,
@@ -364,11 +379,12 @@ export async function getConferenceDashboard(req, res) {
 export async function getConferenceParticipants(req, res) {
   const { role, username } = getUserContext(req);
   const { id } = req.params;
+  const { cohortId } = req.query;
   try {
     const event = await Conference.findById(id).select('title eventId assignedMentor announcedBy');
     const guard = conferenceAccessGuard(event, role, username);
     if (guard) return res.status(guard.status).json({ error: guard.error });
-    const participants = await loadParticipants(id, 'conference');
+    const participants = await loadParticipants(id, 'conference', cohortId);
     res.json({ eventId: id, participants });
   } catch (error) {
     console.error('Get conference participants error:', error);
@@ -380,11 +396,12 @@ export async function getConferenceParticipants(req, res) {
 export async function getConferencePayments(req, res) {
   const { role, username } = getUserContext(req);
   const { id } = req.params;
+  const { cohortId } = req.query;
   try {
     const event = await Conference.findById(id).select('title eventId assignedMentor announcedBy');
     const guard = conferenceAccessGuard(event, role, username);
     if (guard) return res.status(guard.status).json({ error: guard.error });
-    const payments = await loadPayments(id, 'conference');
+    const payments = await loadPayments(id, 'conference', cohortId);
     res.json({ eventId: id, stats: paymentStats(payments), payments });
   } catch (error) {
     console.error('Get conference payments error:', error);
@@ -396,13 +413,16 @@ export async function getConferencePayments(req, res) {
 export async function getConferenceAbstracts(req, res) {
   const { role, username } = getUserContext(req);
   const { id } = req.params;
+  const { cohortId } = req.query;
   try {
     const event = await Conference.findById(id);
     if (!event) return res.status(404).json({ error: 'Conference not found' });
     if (role === 'mentor' && !canAccess(event, username)) {
       return res.status(403).json({ error: 'Forbidden: Cannot view another user\'s conference abstracts' });
     }
-    const list = await Abstract.find({ eventId: id, eventType: 'conference' }).sort({ createdAt: -1 });
+    const q = { eventId: id, eventType: 'conference' };
+    if (cohortId) q.cohortId = cohortId;
+    const list = await Abstract.find(q).sort({ createdAt: -1 });
     res.json(list);
   } catch (error) {
     console.error('Get conference abstracts error:', error);
@@ -414,13 +434,16 @@ export async function getConferenceAbstracts(req, res) {
 export async function getConferenceEnquiries(req, res) {
   const { role, username } = getUserContext(req);
   const { id } = req.params;
+  const { cohortId } = req.query;
   try {
     const event = await Conference.findById(id);
     if (!event) return res.status(404).json({ error: 'Conference not found' });
     if (role === 'mentor' && !canAccess(event, username)) {
       return res.status(403).json({ error: 'Forbidden: Cannot view another user\'s conference enquiries' });
     }
-    const list = await Contact.find({ eventId: id, eventType: 'conference' }).sort({ createdAt: -1 });
+    const q = { eventId: id, eventType: 'conference' };
+    if (cohortId) q.cohortId = cohortId;
+    const list = await Contact.find(q).sort({ createdAt: -1 });
     res.json(list);
   } catch (error) {
     console.error('Get conference enquiries error:', error);

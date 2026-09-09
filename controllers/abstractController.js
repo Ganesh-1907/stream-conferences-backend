@@ -57,7 +57,7 @@ export async function listAbstracts(req, res) {
 }
 
 export async function submitAbstract(req, res) {
-  const { firstName, lastName, name, email, phone, institution, country, track, summary, eventId, eventType, eventSlug } = req.body;
+  const { firstName, lastName, name, email, phone, institution, country, track, summary, eventId, eventType, eventSlug, cohortId } = req.body;
   try {
     if (!firstName || !lastName || !email) {
       return res.status(400).json({ error: 'Missing required abstract fields' });
@@ -98,7 +98,8 @@ export async function submitAbstract(req, res) {
       eventId: event?.eventId || null,
       eventType: event?.eventType || null,
       eventTitle: event?.eventTitle || null,
-      eventSlug: event?.eventSlug || null
+      eventSlug: event?.eventSlug || null,
+      cohortId: cohortId || null
     });
 
     const link = event ? registrationLink(event) : null;
