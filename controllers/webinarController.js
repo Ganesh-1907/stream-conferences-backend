@@ -109,8 +109,8 @@ export async function createWebinar(req, res) {
     organizingCommittee, partners
   } = req.body;
   try {
-    if (!title || !speaker) {
-      return res.status(400).json({ error: 'Title and speaker are required' });
+    if (!title) {
+      return res.status(400).json({ error: 'Title is required' });
     }
 
     const baseSubdomain = sanitizeSubdomain(subdomain || generateSubdomain(title));

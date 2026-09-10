@@ -24,6 +24,7 @@ import { Webinar } from '../models/Webinar.js';
 import { Blog } from '../models/Blog.js';
 import { Registration } from '../models/Registration.js';
 import { Abstract } from '../models/Abstract.js';
+import { Order } from '../models/Order.js';
 
 const router = Router();
 
@@ -58,8 +59,55 @@ router.get('/stats', async (req, res) => {
       Abstract.find(mentorOrAssigned).sort({ createdAt: -1 }).limit(5).select('name email track createdAt'),
     ]);
 
+    // Payment & revenue stats
+    const [paidOrders, totalOrders] = await Promise.all([
+      Order.find({ ...mentorOrAssigned, status: 'paid' }).select('amount eventType createdAt'),
+      Order.countDocuments(mentorOrAssigned),
+    ]);
+    const totalRevenue = paidOrders.reduce((sum, o) => sum + (o.amount || 0), 0);
+    const paidCount = paidOrders.length;
+
+    // Monthly event counts for the current year (last 12 months)
+    const yearStart = new Date(now.getFullYear(), 0, 1);
+    const [confMonthly, webMonthly] = await Promise.all([
+      Conference.aggregate([
+        { $match: { ...mentorFilter, createdAt: { $gte: yearStart } } },
+        { $group: { _id: { $month: '$createdAt' }, count: { $sum: 1 } } },
+      ]),
+      Webinar.aggregate([
+        { $match: { ...mentorFilter, createdAt: { $gte: yearStart } } },
+        { $group: { _id: { $month: '$createdAt' }, count: { $sum: 1 } } },
+      ]),
+    ]);
+
+    // Year-wise event counts (last 5 years)
+    const fiveYearsAgo = new Date(now.getFullYear() - 4, 0, 1);
+    const [confYearly, webYearly] = await Promise.all([
+      Conference.aggregate([
+        { $match: { ...mentorFilter, createdAt: { $gte: fiveYearsAgo } } },
+        { $group: { _id: { $year: '$createdAt' }, count: { $sum: 1 } } },
+        { $sort: { _id: 1 } },
+      ]),
+      Webinar.aggregate([
+        { $match: { ...mentorFilter, createdAt: { $gte: fiveYearsAgo } } },
+        { $group: { _id: { $year: '$createdAt' }, count: { $sum: 1 } } },
+        { $sort: { _id: 1 } },
+      ]),
+    ]);
+
+    // Registration payment status breakdown
+    const [regPaid, regUnpaid, regPending] = await Promise.all([
+      Registration.countDocuments({ ...mentorOrAssigned, paymentStatus: 'paid' }),
+      Registration.countDocuments({ ...mentorOrAssigned, paymentStatus: 'unpaid' }),
+      Registration.countDocuments({ ...mentorOrAssigned, paymentStatus: 'pending' }),
+    ]);
+
     res.json({
       counts: { conferences: confCount, webinars: webCount, blogs: blogCount, registrations: regCount, abstracts: absCount, confUpcoming, confPast, webUpcoming, webPast },
+      revenue: { total: totalRevenue, paidOrders: paidCount, totalOrders },
+      registrations: { paid: regPaid, unpaid: regUnpaid, pending: regPending },
+      monthly: { conferences: confMonthly, webinars: webMonthly },
+      yearly: { conferences: confYearly, webinars: webYearly },
       recent: { conferences: recentConfs, webinars: recentWebs, blogs: recentBlogs, registrations: recentRegs, abstracts: recentAbs },
     });
   } catch (error) {

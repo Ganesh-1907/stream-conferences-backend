@@ -92,7 +92,7 @@ const webinarSchema = new mongoose.Schema({
   endDate: { type: Date, default: null },
   subdomain: { type: String, unique: true, sparse: true, lowercase: true, trim: true },
   assignedMentor: { type: String, default: null },
-  speaker: { type: String, required: true },
+  speaker: { type: String, default: '' },
   startTime: { type: String },
   endTime: { type: String },
   brochureUrl: { type: String },
