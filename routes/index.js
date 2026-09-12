@@ -48,8 +48,10 @@ router.get('/stats', async (req, res) => {
     if (role === 'mentor' && username) {
       const confCohorts = await CourseCohort.find({ courseType: 'conference', assignedMentor: username }).select('courseId').lean();
       const webCohorts = await CourseCohort.find({ courseType: 'webinar', assignedMentor: username }).select('courseId').lean();
-      confIds = confCohorts.map(c => c.courseId);
-      webIds = webCohorts.map(c => c.courseId);
+      const confParentIds = await Conference.find({ assignedMentor: username }).select('_id').lean();
+      const webParentIds = await Webinar.find({ assignedMentor: username }).select('_id').lean();
+      confIds = [...new Set([...confCohorts.map(c => c.courseId.toString()), ...confParentIds.map(p => p._id.toString())])];
+      webIds = [...new Set([...webCohorts.map(c => c.courseId.toString()), ...webParentIds.map(p => p._id.toString())])];
       if (!confIds.length && !webIds.length) {
         return res.json({
           counts: { conferences: 0, webinars: 0, blogs: 0, registrations: 0, abstracts: 0, confUpcoming: 0, confPast: 0, webUpcoming: 0, webPast: 0 },

@@ -56,50 +56,86 @@ export async function listConferences(req, res) {
     const isSummary = req.query.summary === 'true';
 
     if (role === 'mentor' && username) {
-      const cohorts = await CourseCohort.find({ courseType: 'conference', assignedMentor: username }).lean();
-      if (!cohorts.length) return res.json([]);
+      const cohortAssignments = await CourseCohort.find({ courseType: 'conference', assignedMentor: username }).lean();
+      const parentAssignments = await Conference.find({ assignedMentor: username }).select('_id').lean();
+      const parentIdsFromCohorts = cohortAssignments.map(c => c.courseId.toString());
+      const parentIdsFromParent = parentAssignments.map(p => p._id.toString());
+      const allParentIds = [...new Set([...parentIdsFromCohorts, ...parentIdsFromParent])];
 
-      const parentIds = [...new Set(cohorts.map(c => c.courseId.toString()))];
-      const parents = await Conference.find({ _id: { $in: parentIds } }).lean();
+      if (!allParentIds.length) return res.json([]);
+
+      const parents = await Conference.find({ _id: { $in: allParentIds } }).lean();
       const parentMap = new Map(parents.map(p => [p._id.toString(), p]));
+      const cohortByParent = new Map();
+      for (const c of cohortAssignments) {
+        const pid = c.courseId.toString();
+        if (!cohortByParent.has(pid)) cohortByParent.set(pid, []);
+        cohortByParent.get(pid).push(c);
+      }
 
       const mentorNames = await mentorUsernameToNameMap([username]);
       const mentorName = mentorNames.get(username) || username;
+      const result = [];
 
-      if (isSummary) {
-        res.json(cohorts.map(cohort => {
-          const parent = parentMap.get(cohort.courseId.toString());
-          if (!parent) return null;
-          const content = cohort.content || {};
-          return {
-            _id: parent._id,
-            eventId: cohort.cohortId || parent.eventId,
-            title: content.title || cohort.title || parent.title,
-            theme: content.theme || parent.theme,
-            day: content.day || parent.day,
-            month: content.month || parent.month,
-            eventDate: content.startDate || parent.eventDate,
-            date: cohort.status,
-            location: content.location || parent.location,
-            announcedBy: parent.announcedBy,
-            assignedMentor: username,
-            mentorName,
-            subdomain: parent.subdomain,
-            slug: parent.slug,
-            venue: content.venue || parent.venue,
-            cohortId: cohort._id.toString(),
-            cohortCode: cohort.cohortId,
-            isCohort: true,
-            registrationLink: registrationLink({ ...parent, currentCohortId: cohort._id }),
-          };
-        }).filter(Boolean));
-      } else {
-        res.json(cohorts.map(cohort => {
-          const parent = parentMap.get(cohort.courseId.toString());
-          if (!parent) return null;
-          return formatConference({ ...parent, currentCohortId: cohort._id });
-        }).filter(Boolean));
+      for (const parent of parents) {
+        const pid = parent._id.toString();
+        const cohorts = cohortByParent.get(pid);
+        if (cohorts && cohorts.length) {
+          for (const cohort of cohorts) {
+            const content = cohort.content || {};
+            if (isSummary) {
+              result.push({
+                _id: parent._id,
+                eventId: cohort.cohortId || parent.eventId,
+                title: content.title || cohort.title || parent.title,
+                theme: content.theme || parent.theme,
+                day: content.day || parent.day,
+                month: content.month || parent.month,
+                eventDate: content.startDate || parent.eventDate,
+                date: cohort.status,
+                location: content.location || parent.location,
+                announcedBy: parent.announcedBy,
+                assignedMentor: username,
+                mentorName,
+                subdomain: parent.subdomain,
+                slug: parent.slug,
+                venue: content.venue || parent.venue,
+                cohortId: cohort._id.toString(),
+                cohortCode: cohort.cohortId,
+                isCohort: true,
+                registrationLink: registrationLink({ ...parent, currentCohortId: cohort._id }),
+              });
+            } else {
+              result.push(formatConference({ ...parent, currentCohortId: cohort._id }));
+            }
+          }
+        } else {
+          if (isSummary) {
+            result.push({
+              _id: parent._id,
+              eventId: parent.eventId,
+              title: parent.title,
+              theme: parent.theme,
+              day: parent.day,
+              month: parent.month,
+              eventDate: parent.eventDate,
+              date: parent.date,
+              location: parent.location,
+              announcedBy: parent.announcedBy,
+              assignedMentor: parent.assignedMentor,
+              mentorName: parent.assignedMentor ? mentorName : null,
+              subdomain: parent.subdomain,
+              slug: parent.slug,
+              venue: parent.venue,
+              registrationLink: registrationLink(parent),
+            });
+          } else {
+            result.push(formatConference(parent));
+          }
+        }
       }
+
+      res.json(result);
       return;
     }
 
