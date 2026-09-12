@@ -25,8 +25,13 @@ import { Blog } from '../models/Blog.js';
 import { Registration } from '../models/Registration.js';
 import { Abstract } from '../models/Abstract.js';
 import { Order } from '../models/Order.js';
+import { CourseCohort } from '../models/CourseCohort.js';
 
 const router = Router();
+
+function getUserContext(req) {
+  return { role: req.headers['x-user-role'] || 'guest', username: req.headers['x-user-name'] || '' };
+}
 
 router.get('/', (req, res) => {
   res.json({ message: 'Stream Conferences API', version: '1.0.0' });
@@ -35,31 +40,53 @@ router.get('/', (req, res) => {
 router.get('/stats', async (req, res) => {
   try {
     const { role, username } = getUserContext(req);
-    const mentorFilter = role === 'mentor' ? { announcedBy: username } : {};
-    const mentorOrAssigned = role === 'mentor' ? { $or: [{ announcedBy: username }, { assignedMentor: username }] } : {};
     const now = new Date();
 
+    let confIds = null;
+    let webIds = null;
+
+    if (role === 'mentor' && username) {
+      const confCohorts = await CourseCohort.find({ courseType: 'conference', assignedMentor: username }).select('courseId').lean();
+      const webCohorts = await CourseCohort.find({ courseType: 'webinar', assignedMentor: username }).select('courseId').lean();
+      confIds = confCohorts.map(c => c.courseId);
+      webIds = webCohorts.map(c => c.courseId);
+      if (!confIds.length && !webIds.length) {
+        return res.json({
+          counts: { conferences: 0, webinars: 0, blogs: 0, registrations: 0, abstracts: 0, confUpcoming: 0, confPast: 0, webUpcoming: 0, webPast: 0 },
+          revenue: { total: 0, paidOrders: 0, totalOrders: 0 },
+          registrations: { paid: 0, unpaid: 0, pending: 0 },
+          monthly: { conferences: [], webinars: [] },
+          yearly: { conferences: [], webinars: [] },
+          recent: { conferences: [], webinars: [], blogs: [], registrations: [], abstracts: [] },
+        });
+      }
+    }
+
+    const mentorConfFilter = role === 'mentor' ? { _id: { $in: confIds || [] } } : {};
+    const mentorWebFilter = role === 'mentor' ? { _id: { $in: webIds || [] } } : {};
+    const mentorOrAssigned = role === 'mentor' ? { $or: [{ announcedBy: username }, { assignedMentor: username }] } : {};
+    const blogFilter = role === 'mentor' ? { announcedBy: username } : {};
+
     const [confCount, webCount, blogCount, regCount, absCount, confUpcoming, confPast, webUpcoming, webPast] = await Promise.all([
-      Conference.countDocuments(mentorFilter),
-      Webinar.countDocuments(mentorFilter),
-      Blog.countDocuments(mentorFilter),
+      Conference.countDocuments(mentorConfFilter),
+      Webinar.countDocuments(mentorWebFilter),
+      Blog.countDocuments(blogFilter),
       Registration.countDocuments(mentorOrAssigned),
       Abstract.countDocuments(mentorOrAssigned),
-      Conference.countDocuments({ ...mentorFilter, eventDate: { $gte: now } }),
-      Conference.countDocuments({ ...mentorFilter, eventDate: { $lt: now, $ne: null } }),
-      Webinar.countDocuments({ ...mentorFilter, eventDate: { $gte: now } }),
-      Webinar.countDocuments({ ...mentorFilter, eventDate: { $lt: now, $ne: null } }),
+      Conference.countDocuments({ ...mentorConfFilter, eventDate: { $gte: now } }),
+      Conference.countDocuments({ ...mentorConfFilter, eventDate: { $lt: now, $ne: null } }),
+      Webinar.countDocuments({ ...mentorWebFilter, eventDate: { $gte: now } }),
+      Webinar.countDocuments({ ...mentorWebFilter, eventDate: { $lt: now, $ne: null } }),
     ]);
 
     const [recentConfs, recentWebs, recentBlogs, recentRegs, recentAbs] = await Promise.all([
-      Conference.find(mentorFilter).sort({ createdAt: -1 }).limit(3).select('title date eventDate createdAt'),
-      Webinar.find(mentorFilter).sort({ createdAt: -1 }).limit(3).select('title date eventDate createdAt'),
-      Blog.find(mentorFilter).sort({ createdAt: -1 }).limit(3).select('title createdAt'),
+      Conference.find(mentorConfFilter).sort({ createdAt: -1 }).limit(3).select('title date eventDate createdAt'),
+      Webinar.find(mentorWebFilter).sort({ createdAt: -1 }).limit(3).select('title date eventDate createdAt'),
+      Blog.find(blogFilter).sort({ createdAt: -1 }).limit(3).select('title createdAt'),
       Registration.find(mentorOrAssigned).sort({ createdAt: -1 }).limit(5).select('name email category country createdAt'),
       Abstract.find(mentorOrAssigned).sort({ createdAt: -1 }).limit(5).select('name email track createdAt'),
     ]);
 
-    // Payment & revenue stats
     const [paidOrders, totalOrders] = await Promise.all([
       Order.find({ ...mentorOrAssigned, status: 'paid' }).select('amount eventType createdAt'),
       Order.countDocuments(mentorOrAssigned),
@@ -67,35 +94,32 @@ router.get('/stats', async (req, res) => {
     const totalRevenue = paidOrders.reduce((sum, o) => sum + (o.amount || 0), 0);
     const paidCount = paidOrders.length;
 
-    // Monthly event counts for the current year (last 12 months)
     const yearStart = new Date(now.getFullYear(), 0, 1);
     const [confMonthly, webMonthly] = await Promise.all([
       Conference.aggregate([
-        { $match: { ...mentorFilter, createdAt: { $gte: yearStart } } },
+        { $match: { ...mentorConfFilter, createdAt: { $gte: yearStart } } },
         { $group: { _id: { $month: '$createdAt' }, count: { $sum: 1 } } },
       ]),
       Webinar.aggregate([
-        { $match: { ...mentorFilter, createdAt: { $gte: yearStart } } },
+        { $match: { ...mentorWebFilter, createdAt: { $gte: yearStart } } },
         { $group: { _id: { $month: '$createdAt' }, count: { $sum: 1 } } },
       ]),
     ]);
 
-    // Year-wise event counts (last 5 years)
     const fiveYearsAgo = new Date(now.getFullYear() - 4, 0, 1);
     const [confYearly, webYearly] = await Promise.all([
       Conference.aggregate([
-        { $match: { ...mentorFilter, createdAt: { $gte: fiveYearsAgo } } },
+        { $match: { ...mentorConfFilter, createdAt: { $gte: fiveYearsAgo } } },
         { $group: { _id: { $year: '$createdAt' }, count: { $sum: 1 } } },
         { $sort: { _id: 1 } },
       ]),
       Webinar.aggregate([
-        { $match: { ...mentorFilter, createdAt: { $gte: fiveYearsAgo } } },
+        { $match: { ...mentorWebFilter, createdAt: { $gte: fiveYearsAgo } } },
         { $group: { _id: { $year: '$createdAt' }, count: { $sum: 1 } } },
         { $sort: { _id: 1 } },
       ]),
     ]);
 
-    // Registration payment status breakdown
     const [regPaid, regUnpaid, regPending] = await Promise.all([
       Registration.countDocuments({ ...mentorOrAssigned, paymentStatus: 'paid' }),
       Registration.countDocuments({ ...mentorOrAssigned, paymentStatus: 'unpaid' }),
@@ -115,10 +139,6 @@ router.get('/stats', async (req, res) => {
     res.status(500).json({ error: 'Failed to load stats' });
   }
 });
-
-function getUserContext(req) {
-  return { role: req.headers['x-user-role'] || 'guest', username: req.headers['x-user-name'] || '' };
-}
 
 router.use('/auth', authRoutes);
 router.use('/conferences', conferenceRoutes);

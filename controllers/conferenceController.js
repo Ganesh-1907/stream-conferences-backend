@@ -1,4 +1,5 @@
 import { Conference } from '../models/Conference.js';
+import { CourseCohort } from '../models/CourseCohort.js';
 import { Registration } from '../models/Registration.js';
 import { Order } from '../models/Order.js';
 import { Abstract } from '../models/Abstract.js';
@@ -52,11 +53,57 @@ function formatConference(doc) {
 export async function listConferences(req, res) {
   const { role, username } = getUserContext(req);
   try {
-    let query = {};
-    if (role === 'mentor' && username) {
-      query = mentorListQuery(username);
-    }
     const isSummary = req.query.summary === 'true';
+
+    if (role === 'mentor' && username) {
+      const cohorts = await CourseCohort.find({ courseType: 'conference', assignedMentor: username }).lean();
+      if (!cohorts.length) return res.json([]);
+
+      const parentIds = [...new Set(cohorts.map(c => c.courseId.toString()))];
+      const parents = await Conference.find({ _id: { $in: parentIds } }).lean();
+      const parentMap = new Map(parents.map(p => [p._id.toString(), p]));
+
+      const mentorNames = await mentorUsernameToNameMap([username]);
+      const mentorName = mentorNames.get(username) || username;
+
+      if (isSummary) {
+        res.json(cohorts.map(cohort => {
+          const parent = parentMap.get(cohort.courseId.toString());
+          if (!parent) return null;
+          const content = cohort.content || {};
+          return {
+            _id: parent._id,
+            eventId: cohort.cohortId || parent.eventId,
+            title: content.title || cohort.title || parent.title,
+            theme: content.theme || parent.theme,
+            day: content.day || parent.day,
+            month: content.month || parent.month,
+            eventDate: content.startDate || parent.eventDate,
+            date: cohort.status,
+            location: content.location || parent.location,
+            announcedBy: parent.announcedBy,
+            assignedMentor: username,
+            mentorName,
+            subdomain: parent.subdomain,
+            slug: parent.slug,
+            venue: content.venue || parent.venue,
+            cohortId: cohort._id.toString(),
+            cohortCode: cohort.cohortId,
+            isCohort: true,
+            registrationLink: registrationLink({ ...parent, currentCohortId: cohort._id }),
+          };
+        }).filter(Boolean));
+      } else {
+        res.json(cohorts.map(cohort => {
+          const parent = parentMap.get(cohort.courseId.toString());
+          if (!parent) return null;
+          return formatConference({ ...parent, currentCohortId: cohort._id });
+        }).filter(Boolean));
+      }
+      return;
+    }
+
+    const query = {};
     const projection = isSummary
       ? '_id title theme day month eventDate location announcedBy assignedMentor subdomain slug eventId venue'
       : '';

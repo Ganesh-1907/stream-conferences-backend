@@ -1,6 +1,7 @@
 import { CourseCohort } from '../models/CourseCohort.js';
 import { Conference } from '../models/Conference.js';
 import { Webinar } from '../models/Webinar.js';
+import { getUserContext } from '../middleware/auth.js';
 import {
   listCohorts,
   serializeCohort,
@@ -32,11 +33,15 @@ async function courseExists(courseType, courseId) {
 export function listCohortsForCourse(courseType) {
   return async (req, res) => {
     const { id } = req.params;
+    const { role, username } = getUserContext(req);
     try {
       if (!(await courseExists(courseType, id))) {
         return res.status(404).json({ error: 'Course not found' });
       }
-      const cohorts = await listCohorts(courseType, id);
+      let cohorts = await listCohorts(courseType, id);
+      if (role === 'mentor' && username) {
+        cohorts = cohorts.filter(c => c.assignedMentor === username);
+      }
       res.json(cohorts);
     } catch (error) {
       console.error('List cohorts error:', error);
