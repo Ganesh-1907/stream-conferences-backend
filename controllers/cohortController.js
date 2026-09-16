@@ -7,7 +7,6 @@ import {
   serializeCohort,
   setCurrentCohort,
   promoteLatestCohort,
-  snapshotContent,
   buildCohortId,
 } from '../services/cohortService.js';
 import { sanitizeSubdomain } from '../services/slug.js';
@@ -74,7 +73,6 @@ export function createCohortForCourse(courseType) {
       }
 
       const existingCount = await CourseCohort.countDocuments({ courseType, courseId: id });
-      const cohortContent = content || (await snapshotContent(courseType, id));
       const cohortId = await buildCohortId(courseType, id, batchNum);
       const willBeCurrent = Boolean(isCurrent) || existingCount === 0;
 
@@ -93,7 +91,7 @@ export function createCohortForCourse(courseType) {
         isCurrent: false,
         subdomain: resolvedSubdomain || undefined,
         assignedMentor: assignedMentor || null,
-        content: cohortContent,
+        content: content || {},
       });
 
       if (willBeCurrent) {

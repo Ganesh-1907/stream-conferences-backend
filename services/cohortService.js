@@ -13,7 +13,7 @@ const CONTENT_FIELDS = [
   'eventDate', 'startDate', 'endDate', 'startTime', 'endTime', 'speaker',
   'brochureUrl', 'bannerUrl', 'logoUrl', 'headerBanners', 'fees', 'tracks',
   'organizerContact', 'itinerary', 'speakers', 'program', 'faqs', 'sponsors', 'exhibitors',
-  'partners', 'guidelines', 'scientificProgramUrl', 'termsAndConditions', 'organizingCommittee', 'venueDetails',
+  'partners', 'mediaPartners', 'guidelines', 'scientificProgramUrl', 'termsAndConditions', 'organizingCommittee', 'venueDetails',
 ];
 
 export function extractContent(doc) {
@@ -156,7 +156,7 @@ export async function ensureInitialCohort(courseType, course) {
     status: deriveStatus(startDate, endDate),
     isCurrent: true,
     assignedMentor: course.assignedMentor || null,
-    content: extractContent(course),
+    content: {},
   });
 
   const Model = COURSE_MODEL[courseType];
@@ -167,39 +167,6 @@ export async function ensureInitialCohort(courseType, course) {
   return cohort;
 }
 
-// Keep the current cohort's content in sync when the course shell is edited.
-export async function syncCurrentCohortContent(courseType, course) {
-  if (!course || !course.currentCohortId) return null;
-  await CourseCohort.findByIdAndUpdate(course.currentCohortId, {
-    content: extractContent(course),
-  });
-  return course.currentCohortId;
-}
-
-// Copy the current cohort's content (falling back to the course) as a starting point
-// for a newly created cohort.
-export async function snapshotContent(courseType, courseId) {
-  const current = await CourseCohort.findOne({ courseType, courseId, isCurrent: true }).lean();
-  if (current && current.content && Object.keys(current.content).length > 0) {
-    return current.content;
-  }
-  const Model = COURSE_MODEL[courseType];
-  const course = Model ? await Model.findById(courseId).lean() : null;
-  return course ? extractContent(course) : {};
-}
-
-// Backfill content for cohorts created before per-cohort content was introduced.
-export async function backfillCohortContent() {
-  const cohorts = await CourseCohort.find({});
-  let count = 0;
-  for (const cohort of cohorts) {
-    if (cohort.content && Object.keys(cohort.content).length > 0) continue;
-    const Model = COURSE_MODEL[cohort.courseType];
-    const course = Model ? await Model.findById(cohort.courseId) : null;
-    if (!course) continue;
-    cohort.content = extractContent(course);
-    await cohort.save();
-    count += 1;
-  }
-  return count;
-}
+// DEPRECATED: syncCurrentCohortContent and snapshotContent removed.
+// Cohorts are now fully independent - parent edits do NOT cascade to children.
+// Each cohort maintains its own content that is only modified via cohort-specific endpoints.

@@ -8,11 +8,11 @@ import { MentorProfile } from '../models/MentorProfile.js';
 import { getUserContext } from '../middleware/auth.js';
 import { generateSlug, sanitizeSubdomain, generateSubdomain } from '../services/slug.js';
 import { registrationLink } from '../services/eventLink.js';
-import { ensureInitialCohort, syncCurrentCohortContent } from '../services/cohortService.js';
+import { ensureInitialCohort } from '../services/cohortService.js';
 
 const SUBDOMAIN_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
 
-const normalizePartners = (arr) => (Array.isArray(arr) ? arr.map((p) => ({ title: p.title || p.name || '', order: p.order || 0 })) : []);
+const normalizePartners = (arr) => (Array.isArray(arr) ? arr.map((p) => ({ title: p.title || p.name || '', name: p.name || p.title || '', logo: p.logo || '', order: p.order || 0 })) : []);
 
 function canAccess(item, username) {
   return item.announcedBy === username || item.assignedMentor === username;
@@ -34,18 +34,12 @@ async function uniqueSubdomain(base, Model) {
 
 function formatConference(doc) {
   const json = doc.toJSON ? doc.toJSON() : doc;
-  const effectivePartners = (json.partners && json.partners.length > 0)
-    ? json.partners
-    : (json.sponsors && json.sponsors.length > 0)
-      ? json.sponsors
-      : (json.exhibitors && json.exhibitors.length > 0)
-        ? json.exhibitors
-        : [];
   return {
     ...json,
-    partners: effectivePartners,
-    sponsors: effectivePartners,
-    exhibitors: effectivePartners,
+    sponsors: json.sponsors || [],
+    exhibitors: json.exhibitors || [],
+    partners: json.partners || [],
+    mediaPartners: json.mediaPartners || [],
     registrationLink: registrationLink(doc),
   };
 }
@@ -219,7 +213,7 @@ export async function createConference(req, res) {
     startTime, endTime, brochureUrl, bannerUrl, logoUrl, headerBanners, fees, tracks, organizerContact,
     subdomain, venue, assignedMentor, venueAddress, venueMapUrl,
     itinerary, speakers, program, faqs, sponsors, exhibitors, guidelines, scientificProgramUrl, termsAndConditions, venueDetails,
-    organizingCommittee, partners
+    organizingCommittee, partners, mediaPartners
   } = req.body;
   try {
     if (!title) {
@@ -272,8 +266,9 @@ export async function createConference(req, res) {
       program: Array.isArray(program) ? program : [],
       faqs: Array.isArray(faqs) ? faqs : [],
       partners: finalPartners,
-      sponsors: finalPartners,
-      exhibitors: finalPartners,
+      sponsors: sponsors && sponsors.length ? normalizePartners(sponsors) : finalPartners,
+      exhibitors: exhibitors && exhibitors.length ? normalizePartners(exhibitors) : finalPartners,
+      mediaPartners: Array.isArray(mediaPartners) ? normalizePartners(mediaPartners) : [],
       guidelines: guidelines || '',
       scientificProgramUrl: scientificProgramUrl || '',
       termsAndConditions: termsAndConditions || '',
@@ -298,7 +293,7 @@ export async function updateConference(req, res) {
     startTime, endTime, brochureUrl, bannerUrl, logoUrl, headerBanners, fees, tracks, organizerContact,
     subdomain, venue, assignedMentor, venueAddress, venueMapUrl,
     itinerary, speakers, program, faqs, sponsors, exhibitors, guidelines, scientificProgramUrl, termsAndConditions, venueDetails,
-    organizingCommittee, partners
+    organizingCommittee, partners, mediaPartners
   } = req.body;
   try {
     const item = await Conference.findById(id);
@@ -360,16 +355,17 @@ export async function updateConference(req, res) {
       item.sponsors = normalized;
       item.exhibitors = normalized;
     }
+    if (partners !== undefined) {
+      item.partners = normalizePartners(partners);
+    }
     if (sponsors !== undefined) {
-      const normalized = normalizePartners(sponsors);
-      item.sponsors = normalized;
-      if (partners === undefined) item.partners = normalized;
-      if (exhibitors === undefined) item.exhibitors = normalized;
+      item.sponsors = normalizePartners(sponsors);
     }
     if (exhibitors !== undefined) {
-      const normalized = normalizePartners(exhibitors);
-      item.exhibitors = normalized;
-      if (partners === undefined && sponsors === undefined) item.partners = normalized;
+      item.exhibitors = normalizePartners(exhibitors);
+    }
+    if (mediaPartners !== undefined) {
+      item.mediaPartners = Array.isArray(mediaPartners) ? normalizePartners(mediaPartners) : [];
     }
     if (guidelines !== undefined) item.guidelines = guidelines || '';
     if (scientificProgramUrl !== undefined) item.scientificProgramUrl = scientificProgramUrl || '';
@@ -378,7 +374,6 @@ export async function updateConference(req, res) {
     if (organizingCommittee !== undefined) item.organizingCommittee = Array.isArray(organizingCommittee) ? organizingCommittee : [];
 
     await item.save();
-    await syncCurrentCohortContent('conference', item);
     res.json(formatConference(item));
   } catch (error) {
     console.error('Update conference error:', error.message);

@@ -20,14 +20,6 @@ export async function getEventBySubdomain(req, res) {
       return res.status(404).json({ error: 'Event not found' });
     }
 
-    const effectivePartners = (event.partners && event.partners.length > 0)
-      ? event.partners
-      : (event.sponsors && event.sponsors.length > 0)
-        ? event.sponsors
-        : (event.exhibitors && event.exhibitors.length > 0)
-          ? event.exhibitors
-          : [];
-
     const courseType = normalized.eventType;
     const cohorts = await listCohorts(courseType, normalized.eventId);
 
@@ -46,9 +38,10 @@ export async function getEventBySubdomain(req, res) {
       eventType: normalized.eventType,
       registrationLink: registrationLink({ ...event, subdomain: normalized.subdomain }),
       ...event,
-      partners: effectivePartners,
-      sponsors: effectivePartners,
-      exhibitors: effectivePartners,
+      partners: event.partners || [],
+      sponsors: event.sponsors || [],
+      exhibitors: event.exhibitors || [],
+      mediaPartners: event.mediaPartners || [],
       cohorts,
       currentCohort: resolvedCohort,
       activeCohort: resolvedCohort,

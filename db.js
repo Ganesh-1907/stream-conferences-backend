@@ -3,7 +3,7 @@ import { User } from './models/User.js';
 import { Conference } from './models/Conference.js';
 import { Webinar } from './models/Webinar.js';
 import { generateSlug, sanitizeSubdomain } from './services/slug.js';
-import { ensureInitialCohort, backfillCohortContent } from './services/cohortService.js';
+import { ensureInitialCohort } from './services/cohortService.js';
 
 const MONGO_URI = process.env.DATABASE_URL || 'mongodb://localhost:27017/stream-conf';
 
@@ -89,11 +89,6 @@ async function migrateCourseCohorts() {
 
     if (conferenceCount || webinarCount) {
       console.log(`[Database] Backfilled initial cohort for ${conferenceCount} conference(s) and ${webinarCount} webinar(s)`);
-    }
-
-    const contentCount = await backfillCohortContent();
-    if (contentCount) {
-      console.log(`[Database] Backfilled cohort content for ${contentCount} cohort(s)`);
     }
   } catch (err) {
     console.error('[Database] course cohort migration failed:', err);

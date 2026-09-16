@@ -72,6 +72,7 @@ const organizingCommitteeMemberSchema = new mongoose.Schema({
 const partnerSchema = new mongoose.Schema({
   title: { type: String },
   name: { type: String },
+  logo: { type: String, default: '' },
   order: { type: Number, default: 0 }
 }, { strict: false });
 
@@ -120,6 +121,7 @@ const webinarSchema = new mongoose.Schema({
   sponsors: { type: [partnerSchema], default: [] },
   exhibitors: { type: [partnerSchema], default: [] },
   partners: { type: [partnerSchema], default: [] },
+  mediaPartners: { type: [partnerSchema], default: [] },
   guidelines: { type: String },
   scientificProgramUrl: { type: String, default: '' },
   termsAndConditions: { type: String },
