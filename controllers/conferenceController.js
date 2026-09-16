@@ -80,6 +80,7 @@ export async function listConferences(req, res) {
       for (const parent of parents) {
         const pid = parent._id.toString();
         const cohorts = cohortByParent.get(pid);
+        const isDirectlyAssigned = parent.assignedMentor === username;
         if (cohorts && cohorts.length) {
           for (const cohort of cohorts) {
             const content = cohort.content || {};
@@ -107,6 +108,30 @@ export async function listConferences(req, res) {
               });
             } else {
               result.push(formatConference({ ...parent, currentCohortId: cohort._id }));
+            }
+          }
+          if (isDirectlyAssigned) {
+            if (isSummary) {
+              result.push({
+                _id: parent._id,
+                eventId: parent.eventId,
+                title: parent.title,
+                theme: parent.theme,
+                day: parent.day,
+                month: parent.month,
+                eventDate: parent.eventDate,
+                date: parent.date,
+                location: parent.location,
+                announcedBy: parent.announcedBy,
+                assignedMentor: parent.assignedMentor,
+                mentorName: parent.assignedMentor ? mentorName : null,
+                subdomain: parent.subdomain,
+                slug: parent.slug,
+                venue: parent.venue,
+                registrationLink: registrationLink(parent),
+              });
+            } else {
+              result.push(formatConference(parent));
             }
           }
         } else {

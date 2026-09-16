@@ -50,10 +50,23 @@ export async function findBySubdomain(subdomain) {
     }
   }
 
-  const conf = await Conference.findOne({ subdomain: ci }).lean();
+  const conf = await Conference.findOne({
+    $or: [{ subdomain: ci }, { eventId: ci }, { slug: subdomain }]
+  }).lean();
   if (conf) return normalize(conf, 'conference');
-  const web = await Webinar.findOne({ subdomain: ci }).lean();
+
+  const web = await Webinar.findOne({
+    $or: [{ subdomain: ci }, { eventId: ci }, { slug: subdomain }]
+  }).lean();
   if (web) return normalize(web, 'webinar');
+
+  if (OBJECT_ID.test(subdomain)) {
+    const confById = await Conference.findById(subdomain).lean();
+    if (confById) return normalize(confById, 'conference');
+    const webById = await Webinar.findById(subdomain).lean();
+    if (webById) return normalize(webById, 'webinar');
+  }
+
   return null;
 }
 

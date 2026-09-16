@@ -37,7 +37,7 @@ function fileExtension(mimetype, originalname) {
 
 // Upload a single file. When R2 is configured the file is stored in Cloudflare R2
 // and served via GET /api/files/:key. Otherwise it falls back to local disk.
-router.post('/upload', requireUser, upload.single('file'), async (req, res) => {
+router.post(['/', '/upload'], requireUser, upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });

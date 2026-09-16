@@ -90,12 +90,12 @@ export async function registerParticipant(req, res) {
           <p>Hi ${name},</p>
           <p>We have received your registration for <strong>${event?.eventTitle || 'the event'}</strong> under the <strong>${category}</strong> category.</p>
           ${feeHtml}
-          ${link ? `<p style="margin:24px 0;"><a href="${link}" style="display:inline-block; background:#0e7490; color:#ffffff; text-decoration:none; padding:12px 24px; border-radius:6px; font-weight:bold;">Complete Payment</a></p>` : `<p>Your registration has been recorded. Our secretariat will contact you with further details.</p>`}
+          ${link ? `<p style="margin:24px 0;"><a href="${link}" style="display:inline-block; background:#0e7490; color:#ffffff; text-decoration:none; padding:12px 24px; border-radius:6px; font-weight:bold;">Complete Payment</a></p>` : `<p>Your registration has been recorded. Our support team will contact you with further details.</p>`}
           <p style="color:#64748b; font-size:13px;">Your registration is confirmed once payment is completed. Keep this email for your records.</p>
         `,
-        footerText: `For queries, please contact the event secretariat.`,
+        footerText: `For queries, please contact the event support team.`,
       }),
-      text: `Hi ${name},\n\nThank you for registering for ${event?.eventTitle || 'the event'} under ${category} category.\n${link ? `\nComplete payment: ${link}\n` : '\nOur secretariat will contact you with further details.\n'}\nYour registration is confirmed once payment is completed.\n`
+      text: `Hi ${name},\n\nThank you for registering for ${event?.eventTitle || 'the event'} under ${category} category.\n${link ? `\nComplete payment: ${link}\n` : '\nOur support team will contact you with further details.\n'}\nYour registration is confirmed once payment is completed.\n`
     });
 
     res.status(201).json(item);

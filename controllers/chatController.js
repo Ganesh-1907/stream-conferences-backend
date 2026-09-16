@@ -4,7 +4,7 @@ import { getUserContext } from '../middleware/auth.js';
 
 // Create or fetch the visitor's session (public — called when the widget opens)
 export async function getOrCreateSession(req, res) {
-  const { visitorId, visitorName, visitorEmail } = req.body || {};
+  const { visitorId, visitorName, visitorEmail, visitorPhone, visitorCountry } = req.body || {};
   try {
     if (!visitorId) {
       return res.status(400).json({ error: 'visitorId is required' });
@@ -14,11 +14,15 @@ export async function getOrCreateSession(req, res) {
       session = await ChatSession.create({
         visitorId,
         visitorName: visitorName || 'Visitor',
-        visitorEmail: visitorEmail || ''
+        visitorEmail: visitorEmail || '',
+        visitorPhone: visitorPhone || '',
+        visitorCountry: visitorCountry || ''
       });
     } else {
       if (visitorName) session.visitorName = visitorName;
-      if (visitorEmail) session.visitorEmail = visitorEmail;
+      if (visitorEmail !== undefined) session.visitorEmail = visitorEmail;
+      if (visitorPhone !== undefined) session.visitorPhone = visitorPhone;
+      if (visitorCountry !== undefined) session.visitorCountry = visitorCountry;
       await session.save();
     }
     res.json(session);
