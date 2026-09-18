@@ -146,19 +146,6 @@ const conferenceSchema = new mongoose.Schema({
 
 // Auto-generate C-prefix sequential eventId if not provided
 conferenceSchema.pre('save', async function (next) {
-  const effective = (this.partners && this.partners.length > 0)
-    ? this.partners
-    : (this.sponsors && this.sponsors.length > 0)
-      ? this.sponsors
-      : (this.exhibitors && this.exhibitors.length > 0)
-        ? this.exhibitors
-        : [];
-  if (effective.length > 0) {
-    this.partners = effective;
-    this.sponsors = effective;
-    this.exhibitors = effective;
-  }
-
   if (!this.eventId) {
     this.eventId = await nextEventId(this.constructor, 'SCC');
   }

@@ -265,9 +265,9 @@ export async function createConference(req, res) {
       speakers: Array.isArray(speakers) ? speakers : [],
       program: Array.isArray(program) ? program : [],
       faqs: Array.isArray(faqs) ? faqs : [],
-      partners: finalPartners,
-      sponsors: sponsors && sponsors.length ? normalizePartners(sponsors) : finalPartners,
-      exhibitors: exhibitors && exhibitors.length ? normalizePartners(exhibitors) : finalPartners,
+      partners: Array.isArray(partners) ? normalizePartners(partners) : [],
+      sponsors: Array.isArray(sponsors) ? normalizePartners(sponsors) : [],
+      exhibitors: Array.isArray(exhibitors) ? normalizePartners(exhibitors) : [],
       mediaPartners: Array.isArray(mediaPartners) ? normalizePartners(mediaPartners) : [],
       guidelines: guidelines || '',
       scientificProgramUrl: scientificProgramUrl || '',
@@ -349,12 +349,6 @@ export async function updateConference(req, res) {
     if (speakers !== undefined) item.speakers = Array.isArray(speakers) ? speakers : [];
     if (program !== undefined) item.program = Array.isArray(program) ? program : [];
     if (faqs !== undefined) item.faqs = Array.isArray(faqs) ? faqs : [];
-    if (partners !== undefined) {
-      const normalized = normalizePartners(partners);
-      item.partners = normalized;
-      item.sponsors = normalized;
-      item.exhibitors = normalized;
-    }
     if (partners !== undefined) {
       item.partners = normalizePartners(partners);
     }

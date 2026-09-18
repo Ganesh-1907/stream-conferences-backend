@@ -15,7 +15,7 @@ if (!fs.existsSync(uploadDir)) {
 // Keep file in memory so we can stream it to R2 (or fall back to disk).
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 20 * 1024 * 1024 } // 20 MB
+  limits: { fileSize: 5 * 1024 * 1024 } // 5 MB max limit
 });
 
 const router = Router();
@@ -37,7 +37,17 @@ function fileExtension(mimetype, originalname) {
 
 // Upload a single file. When R2 is configured the file is stored in Cloudflare R2
 // and served via GET /api/files/:key. Otherwise it falls back to local disk.
-router.post(['/', '/upload'], requireUser, upload.single('file'), async (req, res) => {
+router.post(['/', '/upload'], requireUser, (req, res, next) => {
+  upload.single('file')(req, res, (err) => {
+    if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ error: 'File size exceeds 5MB limit. Please compress your file to 5MB or less.' });
+    }
+    if (err) {
+      return res.status(400).json({ error: err.message || 'File upload error' });
+    }
+    next();
+  });
+}, async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });

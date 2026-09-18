@@ -12,11 +12,21 @@ const router = Router();
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 20 * 1024 * 1024 } // 20 MB
+  limits: { fileSize: 5 * 1024 * 1024 } // 5 MB
 });
 
 router.get('/', requireAdmin, listAbstracts);
-router.post('/submit', upload.single('abstractFile'), submitAbstract);
+router.post('/submit', (req, res, next) => {
+  upload.single('abstractFile')(req, res, (err) => {
+    if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ error: 'Abstract file exceeds 5MB limit. Please compress to 5MB or less.' });
+    }
+    if (err) {
+      return res.status(400).json({ error: err.message || 'File upload error' });
+    }
+    next();
+  });
+}, submitAbstract);
 router.post('/:id/approve', requireAdmin, approveAbstract);
 router.post('/:id/reject', requireAdmin, rejectAbstract);
 
