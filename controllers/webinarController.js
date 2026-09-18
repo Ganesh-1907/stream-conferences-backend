@@ -40,6 +40,7 @@ function formatWebinar(doc) {
     exhibitors: json.exhibitors || [],
     partners: json.partners || [],
     mediaPartners: json.mediaPartners || [],
+    socialLinks: json.socialLinks || {},
     registrationLink: registrationLink(doc),
   };
 }
@@ -74,6 +75,7 @@ export async function listWebinars(req, res) {
         const pid = parent._id.toString();
         const cohorts = cohortByParent.get(pid);
         const isDirectlyAssigned = parent.assignedMentor === username;
+        const parentStatus = parent.date || (parent.eventDate && new Date(parent.eventDate).getTime() < Date.now() ? 'past' : 'upcoming');
         if (cohorts && cohorts.length) {
           for (const cohort of cohorts) {
             const content = cohort.content || {};
@@ -86,7 +88,7 @@ export async function listWebinars(req, res) {
                 day: content.day || parent.day,
                 month: content.month || parent.month,
                 eventDate: content.startDate || parent.eventDate,
-                date: cohort.status,
+                date: cohort.status || parentStatus,
                 location: content.location || parent.location,
                 announcedBy: parent.announcedBy,
                 assignedMentor: username,
@@ -113,7 +115,7 @@ export async function listWebinars(req, res) {
                 day: parent.day,
                 month: parent.month,
                 eventDate: parent.eventDate,
-                date: parent.date,
+                date: parentStatus,
                 location: parent.location,
                 announcedBy: parent.announcedBy,
                 assignedMentor: parent.assignedMentor,
@@ -137,7 +139,7 @@ export async function listWebinars(req, res) {
               day: parent.day,
               month: parent.month,
               eventDate: parent.eventDate,
-              date: parent.date,
+              date: parentStatus,
               location: parent.location,
               announcedBy: parent.announcedBy,
               assignedMentor: parent.assignedMentor,
@@ -214,7 +216,7 @@ export async function createWebinar(req, res) {
     speaker, startTime, endTime, brochureUrl, bannerUrl, logoUrl, headerBanners, fees, tracks, organizerContact,
     subdomain, venue, assignedMentor, venueAddress, venueMapUrl,
     itinerary, speakers, program, faqs, sponsors, exhibitors, guidelines, scientificProgramUrl, termsAndConditions, venueDetails,
-    organizingCommittee, partners, mediaPartners
+    organizingCommittee, partners, mediaPartners, welcomeBannerTitle, welcomeBannerDescription, socialLinks
   } = req.body;
   try {
     if (!title) {
@@ -263,6 +265,7 @@ export async function createWebinar(req, res) {
       fees: Array.isArray(fees) ? fees : [],
       tracks: Array.isArray(tracks) ? tracks : [],
       organizerContact: organizerContact || {},
+      socialLinks: socialLinks || {},
       itinerary: Array.isArray(itinerary) ? itinerary : [],
       speakers: Array.isArray(speakers) ? speakers : [],
       program: Array.isArray(program) ? program : [],
@@ -276,6 +279,8 @@ export async function createWebinar(req, res) {
       termsAndConditions: termsAndConditions || '',
       organizingCommittee: Array.isArray(organizingCommittee) ? organizingCommittee : [],
       venueDetails: venueDetails || {},
+      welcomeBannerTitle: welcomeBannerTitle || '',
+      welcomeBannerDescription: welcomeBannerDescription || '',
       announcedBy: username
     });
     const cohort = await ensureInitialCohort('webinar', item);
@@ -295,7 +300,7 @@ export async function updateWebinar(req, res) {
     speaker, startTime, endTime, brochureUrl, bannerUrl, logoUrl, headerBanners, fees, tracks, organizerContact,
     subdomain, venue, assignedMentor, venueAddress, venueMapUrl,
     itinerary, speakers, program, faqs, sponsors, exhibitors, guidelines, scientificProgramUrl, termsAndConditions, venueDetails,
-    organizingCommittee, partners, mediaPartners
+    organizingCommittee, partners, mediaPartners, welcomeBannerTitle, welcomeBannerDescription, socialLinks
   } = req.body;
   try {
     const item = await Webinar.findById(id);
@@ -348,6 +353,9 @@ export async function updateWebinar(req, res) {
     if (fees !== undefined) item.fees = Array.isArray(fees) ? fees : [];
     if (tracks !== undefined) item.tracks = Array.isArray(tracks) ? tracks : [];
     if (organizerContact !== undefined) { item.organizerContact = organizerContact; item.markModified('organizerContact'); }
+    if (socialLinks !== undefined) { item.socialLinks = socialLinks; item.markModified('socialLinks'); }
+    if (welcomeBannerTitle !== undefined) item.welcomeBannerTitle = welcomeBannerTitle;
+    if (welcomeBannerDescription !== undefined) item.welcomeBannerDescription = welcomeBannerDescription;
     if (itinerary !== undefined) item.itinerary = Array.isArray(itinerary) ? itinerary : [];
     if (speakers !== undefined) item.speakers = Array.isArray(speakers) ? speakers : [];
     if (program !== undefined) item.program = Array.isArray(program) ? program : [];

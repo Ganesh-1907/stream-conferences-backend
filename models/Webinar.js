@@ -4,6 +4,7 @@ import { nextEventId } from '../services/idGenerator.js';
 const feeEntrySchema = new mongoose.Schema({
   type: { type: String, required: true },
   dateLabel: { type: String, default: '' },
+  deadline: { type: Date, default: null },
   usd: { type: Number, default: 0 },
   gbp: { type: Number, default: 0 },
   eur: { type: Number, default: 0 }
@@ -80,6 +81,8 @@ const webinarSchema = new mongoose.Schema({
   title: { type: String, required: true },
   slug: { type: String, required: true, unique: true },
   description: { type: String },
+  welcomeBannerTitle: { type: String, default: '' },
+  welcomeBannerDescription: { type: String, default: '' },
   theme: { type: String, default: '' },
   themeColor: { type: String, default: '' },
   day: { type: String, default: '' },
@@ -126,6 +129,13 @@ const webinarSchema = new mongoose.Schema({
   scientificProgramUrl: { type: String, default: '' },
   termsAndConditions: { type: String },
   organizingCommittee: { type: [organizingCommitteeMemberSchema], default: [] },
+  socialLinks: {
+    facebook: { type: String, default: '' },
+    twitter: { type: String, default: '' },
+    linkedin: { type: String, default: '' },
+    instagram: { type: String, default: '' },
+    youtube: { type: String, default: '' }
+  },
   
   // Venue details for schedule and venue tab
   venueDetails: {

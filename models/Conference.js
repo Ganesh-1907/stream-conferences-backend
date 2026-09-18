@@ -4,6 +4,7 @@ import { nextEventId } from '../services/idGenerator.js';
 const feeEntrySchema = new mongoose.Schema({
   type: { type: String, required: true },
   dateLabel: { type: String, default: '' },
+  deadline: { type: Date, default: null },
   usd: { type: Number, default: 0 },
   gbp: { type: Number, default: 0 },
   eur: { type: Number, default: 0 }
@@ -125,6 +126,13 @@ const conferenceSchema = new mongoose.Schema({
   scientificProgramUrl: { type: String, default: '' },
   termsAndConditions: { type: String },
   organizingCommittee: { type: [organizingCommitteeMemberSchema], default: [] },
+  socialLinks: {
+    facebook: { type: String, default: '' },
+    twitter: { type: String, default: '' },
+    linkedin: { type: String, default: '' },
+    instagram: { type: String, default: '' },
+    youtube: { type: String, default: '' }
+  },
   
   // Venue details for schedule and venue tab
   venueDetails: {
@@ -141,7 +149,9 @@ const conferenceSchema = new mongoose.Schema({
     description: { type: String },
     images: { type: [String], default: [] },
     moreInfo: { type: String }
-  }
+  },
+  welcomeBannerTitle: { type: String, default: '' },
+  welcomeBannerDescription: { type: String, default: '' }
 }, { toJSON: { virtuals: true }, toObject: { virtuals: true } });
 
 // Auto-generate C-prefix sequential eventId if not provided

@@ -107,12 +107,12 @@ function buildTracks(pool, count) {
 
 function buildFees() {
   return [
-    { type: 'Student', dateLabel: 'on/before 25 Dec', usd: 255, gbp: 277, eur: 299 },
-    { type: 'Student', dateLabel: 'on/before 30 Jan', usd: 190, gbp: 190, eur: 199 },
-    { type: 'Student', dateLabel: 'Final', usd: 190, gbp: 788, eur: 890 },
-    { type: 'Academic', dateLabel: 'on/before 25 Dec', usd: 355, gbp: 377, eur: 399 },
-    { type: 'Academic', dateLabel: 'on/before 30 Jan', usd: 290, gbp: 290, eur: 299 },
-    { type: 'Industry Delegate', dateLabel: 'on/before 25 Dec', usd: 555, gbp: 577, eur: 599 },
+    { type: 'Student', dateLabel: 'on/before 25 Dec', deadline: '2026-12-25', usd: 255, gbp: 277, eur: 299 },
+    { type: 'Student', dateLabel: 'on/before 30 Jan', deadline: '2027-01-30', usd: 190, gbp: 190, eur: 199 },
+    { type: 'Student', dateLabel: 'Final', deadline: null, usd: 190, gbp: 788, eur: 890 },
+    { type: 'Academic', dateLabel: 'on/before 25 Dec', deadline: '2026-12-25', usd: 355, gbp: 377, eur: 399 },
+    { type: 'Academic', dateLabel: 'on/before 30 Jan', deadline: '2027-01-30', usd: 290, gbp: 290, eur: 299 },
+    { type: 'Industry Delegate', dateLabel: 'on/before 25 Dec', deadline: '2026-12-25', usd: 555, gbp: 577, eur: 599 },
   ];
 }
 
