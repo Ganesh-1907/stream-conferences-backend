@@ -30,7 +30,7 @@ export async function listContacts(req, res) {
 }
 
 export async function sendContact(req, res) {
-  const { name, email, phone, subject, conference, message, eventId, eventType, eventSlug, cohortId } = req.body;
+  const { name, email, phone, country, subject, conference, message, eventId, eventType, eventSlug, cohortId } = req.body;
   try {
     if (!name || !email || !message) {
       return res.status(400).json({ error: 'Missing required contact fields (name, email, message)' });
@@ -40,6 +40,7 @@ export async function sendContact(req, res) {
       name,
       email,
       phone,
+      country,
       subject,
       conference,
       message,

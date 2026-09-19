@@ -42,7 +42,8 @@ const speakerSchema = new mongoose.Schema({
   twitter: { type: String },
   website: { type: String },
   topic: { type: String },
-  isKeynote: { type: Boolean, default: false }
+  isKeynote: { type: Boolean, default: false },
+  category: { type: String, default: 'speaker' }
 });
 
 const programDaySchema = new mongoose.Schema({
@@ -83,6 +84,11 @@ const webinarSchema = new mongoose.Schema({
   description: { type: String },
   welcomeBannerTitle: { type: String, default: '' },
   welcomeBannerDescription: { type: String, default: '' },
+  gtmCode: { type: String, default: '' },
+  gaCode: { type: String, default: '' },
+  mcCode: { type: String, default: '' },
+  metaTitle: { type: String, default: '' },
+  metaDescription: { type: String, default: '' },
   theme: { type: String, default: '' },
   themeColor: { type: String, default: '' },
   day: { type: String, default: '' },

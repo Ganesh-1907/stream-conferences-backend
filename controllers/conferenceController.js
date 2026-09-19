@@ -215,7 +215,8 @@ export async function createConference(req, res) {
     startTime, endTime, brochureUrl, bannerUrl, logoUrl, headerBanners, fees, tracks, organizerContact,
     subdomain, venue, assignedMentor, venueAddress, venueMapUrl,
     itinerary, speakers, program, faqs, sponsors, exhibitors, guidelines, scientificProgramUrl, termsAndConditions, venueDetails,
-    organizingCommittee, partners, mediaPartners, welcomeBannerTitle, welcomeBannerDescription, socialLinks
+    organizingCommittee, partners, mediaPartners, welcomeBannerTitle, welcomeBannerDescription, socialLinks,
+    gtmCode, gaCode, mcCode, metaTitle, metaDescription
   } = req.body;
   try {
     if (!title) {
@@ -279,6 +280,11 @@ export async function createConference(req, res) {
       organizingCommittee: Array.isArray(organizingCommittee) ? organizingCommittee : [],
       welcomeBannerTitle: welcomeBannerTitle || '',
       welcomeBannerDescription: welcomeBannerDescription || '',
+      gtmCode: gtmCode || '',
+      gaCode: gaCode || '',
+      mcCode: mcCode || '',
+      metaTitle: metaTitle || '',
+      metaDescription: metaDescription || '',
       announcedBy: username
     });
     const cohort = await ensureInitialCohort('conference', item);
@@ -298,7 +304,8 @@ export async function updateConference(req, res) {
     startTime, endTime, brochureUrl, bannerUrl, logoUrl, headerBanners, fees, tracks, organizerContact,
     subdomain, venue, assignedMentor, venueAddress, venueMapUrl,
     itinerary, speakers, program, faqs, sponsors, exhibitors, guidelines, scientificProgramUrl, termsAndConditions, venueDetails,
-    organizingCommittee, partners, mediaPartners, welcomeBannerTitle, welcomeBannerDescription, socialLinks
+    organizingCommittee, partners, mediaPartners, welcomeBannerTitle, welcomeBannerDescription, socialLinks,
+    gtmCode, gaCode, mcCode, metaTitle, metaDescription
   } = req.body;
   try {
     const item = await Conference.findById(id);
@@ -353,6 +360,11 @@ export async function updateConference(req, res) {
     if (socialLinks !== undefined) { item.socialLinks = socialLinks; item.markModified('socialLinks'); }
     if (welcomeBannerTitle !== undefined) item.welcomeBannerTitle = welcomeBannerTitle;
     if (welcomeBannerDescription !== undefined) item.welcomeBannerDescription = welcomeBannerDescription;
+    if (gtmCode !== undefined) item.gtmCode = gtmCode;
+    if (gaCode !== undefined) item.gaCode = gaCode;
+    if (mcCode !== undefined) item.mcCode = mcCode;
+    if (metaTitle !== undefined) item.metaTitle = metaTitle;
+    if (metaDescription !== undefined) item.metaDescription = metaDescription;
     if (itinerary !== undefined) item.itinerary = Array.isArray(itinerary) ? itinerary : [];
     if (speakers !== undefined) item.speakers = Array.isArray(speakers) ? speakers : [];
     if (program !== undefined) item.program = Array.isArray(program) ? program : [];

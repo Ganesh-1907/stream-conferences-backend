@@ -42,7 +42,8 @@ const speakerSchema = new mongoose.Schema({
   twitter: { type: String },
   website: { type: String },
   topic: { type: String },
-  isKeynote: { type: Boolean, default: false }
+  isKeynote: { type: Boolean, default: false },
+  category: { type: String, default: 'speaker' }
 });
 
 const programDaySchema = new mongoose.Schema({
@@ -151,7 +152,12 @@ const conferenceSchema = new mongoose.Schema({
     moreInfo: { type: String }
   },
   welcomeBannerTitle: { type: String, default: '' },
-  welcomeBannerDescription: { type: String, default: '' }
+  welcomeBannerDescription: { type: String, default: '' },
+  gtmCode: { type: String, default: '' },
+  gaCode: { type: String, default: '' },
+  mcCode: { type: String, default: '' },
+  metaTitle: { type: String, default: '' },
+  metaDescription: { type: String, default: '' }
 }, { toJSON: { virtuals: true }, toObject: { virtuals: true } });
 
 // Auto-generate C-prefix sequential eventId if not provided
