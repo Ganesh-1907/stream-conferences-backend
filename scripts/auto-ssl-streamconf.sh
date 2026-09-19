@@ -4,7 +4,7 @@
 # Deploy: copy to /usr/local/bin/auto-ssl-streamconf.sh on server and add cron job
 
 API="http://localhost:7867/api"
-CERT_NAME="ai-entrepreneurship.buildyourvision.in"
+CERT_NAME="streamconferences.com"
 LOG="/var/log/auto-ssl-streamconf.log"
 
 # Get all subdomains from conferences
@@ -29,12 +29,12 @@ try:
 except: pass
 " 2>/dev/null)
 
-ALL_SUBS=$(echo -e "$SUBS\n$SUBS_WEB\nadmin\napi\nstream" | sort -u | grep -v '^$')
+ALL_SUBS=$(echo -e "$SUBS\n$SUBS_WEB\nadmin\napi\nwww" | sort -u | grep -v '^$')
 
 # Build -d flags for all subdomains
-DOMAIN_FLAGS=""
+DOMAIN_FLAGS="-d streamconferences.com"
 for sub in $ALL_SUBS; do
-    DOMAIN_FLAGS="$DOMAIN_FLAGS -d ${sub}.buildyourvision.in"
+    DOMAIN_FLAGS="$DOMAIN_FLAGS -d ${sub}.streamconferences.com"
 done
 
 # Renew consolidated cert with all domains
