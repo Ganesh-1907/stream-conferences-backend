@@ -9,6 +9,7 @@ import { getUserContext } from '../middleware/auth.js';
 import { generateSlug, sanitizeSubdomain, generateSubdomain } from '../services/slug.js';
 import { registrationLink } from '../services/eventLink.js';
 import { ensureInitialCohort } from '../services/cohortService.js';
+import { provisionSsl } from '../services/sslProvisioner.js';
 
 const SUBDOMAIN_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
 
@@ -291,6 +292,7 @@ export async function createWebinar(req, res) {
     });
     const cohort = await ensureInitialCohort('webinar', item);
     if (cohort) item.currentCohortId = cohort._id;
+    provisionSsl(resolvedSubdomain);
     res.status(201).json(formatWebinar(item));
   } catch (error) {
     console.error('Create webinar error:', error);
