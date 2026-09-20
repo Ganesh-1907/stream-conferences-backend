@@ -7,7 +7,7 @@ const registrationSchema = new mongoose.Schema({
   institution: { type: String, required: true },
   country: { type: String, required: true },
   category: { type: String, required: true },
-  presentingAbstract: { type: String, required: true },
+  presentingAbstract: { type: String, default: 'no' },
   eventId: { type: String },
   eventType: { type: String, enum: ['conference', 'webinar'], default: 'conference' },
   eventTitle: { type: String },

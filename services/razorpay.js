@@ -10,7 +10,7 @@ export const razorpay = razorpayEnabled
   ? new Razorpay({ key_id: KEY_ID, key_secret: KEY_SECRET })
   : null;
 
-export function createRazorpayOrder({ amount, currency = 'INR', receipt }) {
+export function createRazorpayOrder({ amount, currency = 'USD', receipt }) {
   if (!razorpay) {
     const mockOrderId = `order_mock_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
     return Promise.resolve({

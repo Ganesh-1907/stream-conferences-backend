@@ -60,7 +60,7 @@ export async function registerParticipant(req, res) {
       institution,
       country,
       category,
-      presentingAbstract,
+      presentingAbstract: presentingAbstract || 'no',
       eventId: event?.eventId || null,
       eventType: event?.eventType || null,
       eventTitle: event?.eventTitle || null,

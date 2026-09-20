@@ -10,6 +10,8 @@ const orderSchema = new mongoose.Schema({
   category: { type: String, required: true },
   amount: { type: Number, required: true },
   currency: { type: String, default: 'INR' },
+  originalCurrency: { type: String, default: 'USD' },
+  originalAmount: { type: Number },
   registrationId: { type: String },
   eventId: { type: String },
   eventType: { type: String, enum: ['conference', 'webinar'], default: 'conference' },

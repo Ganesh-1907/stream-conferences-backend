@@ -38,7 +38,9 @@ export function generateRegistrationPDF({ registration, order, event }) {
     ].filter(Boolean).join(', ') || '';
 
     const regDate = registration?.createdAt ? formatDate(registration.createdAt) : formatDate(new Date());
-    const amount = order ? `₹${(order.amount / 100).toFixed(2)}` : '—';
+    const curSym = { USD: '$', EUR: '€', GBP: '£', INR: '₹' };
+    const orderCurrency = order?.currency || 'USD';
+    const amount = order ? `${curSym[orderCurrency] || '$'}${(order.amount / 100).toFixed(2)} ${orderCurrency}` : '—';
     const paymentId = order?.paymentId || '—';
     const orderId = order?.orderId || '—';
 

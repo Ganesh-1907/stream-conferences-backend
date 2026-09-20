@@ -18,6 +18,8 @@ const CATEGORY_PRICING = {
   'Virtual Attendee': 14500
 };
 
+const CURRENCY_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', INR: '₹' };
+
 /** Fetch the full event document for email branding. */
 async function fetchFullEvent(eventId, eventType) {
   if (!eventId) return null;
@@ -41,20 +43,21 @@ export async function listOrders(req, res) {
 }
 
 export async function createOrder(req, res) {
-  const { name, email, phone, category, amount, registrationId, eventId, eventType, eventTitle, eventSlug, cohortId } = req.body;
+  const { name, email, phone, category, amount, currency, registrationId, eventId, eventType, eventTitle, eventSlug, cohortId } = req.body;
   try {
     if (!name || !email || !category) {
       return res.status(400).json({ error: 'Missing required order fields (name, email, category)' });
     }
 
-    const amountInPaisa = amount
+    const orderCurrency = (currency || 'USD').toUpperCase();
+    const amountInSubunit = amount
       ? Math.round(Number(amount) * 100)
-      : CATEGORY_PRICING[category] || 24500;
+      : (CATEGORY_PRICING[category] || 24500);
 
     const receipt = `reg_${Date.now()}`;
     const created = await createRazorpayOrder({
-      amount: amountInPaisa,
-      currency: 'INR',
+      amount: amountInSubunit,
+      currency: orderCurrency,
       receipt
     });
 
@@ -64,8 +67,10 @@ export async function createOrder(req, res) {
       email,
       phone,
       category,
-      amount: amountInPaisa,
-      currency: created.currency || 'INR',
+      amount: amountInSubunit,
+      currency: created.currency || orderCurrency,
+      originalCurrency: orderCurrency,
+      originalAmount: amountInSubunit,
       registrationId: registrationId || null,
       eventId: eventId || null,
       eventType: eventType || 'conference',
@@ -139,6 +144,10 @@ export async function verifyOrder(req, res) {
     if (order.email) {
       const fullEvent = await fetchFullEvent(order.eventId, order.eventType);
 
+      // Format currency symbol for receipt
+      const curSym = CURRENCY_SYMBOLS[order.currency?.toUpperCase()] || '$';
+      const displayTotal = `${curSym}${(order.amount / 100).toFixed(2)} ${order.currency || 'USD'}`;
+
       // Generate PDF receipt
       let pdfBuffer = null;
       try {
@@ -157,10 +166,10 @@ export async function verifyOrder(req, res) {
         html: emailTemplate({
           heading: 'Payment confirmed',
           event: fullEvent,
-          preheader: `Your payment of ₹${(order.amount / 100).toFixed(2)} for ${order.eventTitle || 'the event'} has been received.`,
+          preheader: `Your payment of ${displayTotal} for ${order.eventTitle || 'the event'} has been received.`,
           body: `
             <p>Hi ${order.name},</p>
-            <p>Your payment of <strong>₹${(order.amount / 100).toFixed(2)}</strong> has been received for <strong>${order.eventTitle || 'the event'}</strong>.</p>
+            <p>Your payment of <strong>${displayTotal}</strong> has been received for <strong>${order.eventTitle || 'the event'}</strong>.</p>
             <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:14px 18px; margin:18px 0; font-size:14px;">
               <div><strong style="color:#0e7490;">Category:</strong> ${order.category || '—'}</div>
               <div><strong style="color:#0e7490;">Payment ID:</strong> ${paymentId}</div>
@@ -171,7 +180,7 @@ export async function verifyOrder(req, res) {
           `,
           footerText: `Thank you for registering. We look forward to seeing you at the event.`,
         }),
-        text: `Hi ${order.name},\n\nYour payment of ₹${(order.amount / 100).toFixed(2)} has been received for ${order.eventTitle || 'the event'}.\n\nCategory: ${order.category}\nPayment ID: ${paymentId}\nOrder ID: ${orderId}\n\nYou are now fully registered. Your registration confirmation PDF is attached.\n`,
+        text: `Hi ${order.name},\n\nYour payment of ${displayTotal} has been received for ${order.eventTitle || 'the event'}.\n\nCategory: ${order.category}\nPayment ID: ${paymentId}\nOrder ID: ${orderId}\n\nYou are now fully registered. Your registration confirmation PDF is attached.\n`,
         attachments
       });
     }
