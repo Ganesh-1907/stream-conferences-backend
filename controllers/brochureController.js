@@ -18,10 +18,11 @@ export async function listBrochureRequests(req, res) {
 }
 
 export async function createBrochureRequest(req, res) {
-  const { firstName, lastName, email, phone, institution, country, eventId, eventType, eventSlug, cohortId } = req.body;
+  const { title, fullName, firstName, lastName, name, email, phone, institution, designation, address, country, eventId, eventType, eventSlug, cohortId } = req.body;
   try {
-    if (!firstName || !lastName || !email) {
-      return res.status(400).json({ error: 'Missing required fields (firstName, lastName, email)' });
+    const finalFullName = fullName || name || `${firstName || ''} ${lastName || ''}`.trim();
+    if (!finalFullName || !email) {
+      return res.status(400).json({ error: 'Missing required fields (fullName, email)' });
     }
 
     let event = null;
@@ -34,11 +35,15 @@ export async function createBrochureRequest(req, res) {
     }
 
     const item = await BrochureRequest.create({
-      firstName,
-      lastName,
+      title,
+      fullName: finalFullName,
+      firstName: firstName || title,
+      lastName: lastName || finalFullName,
       email,
       phone,
       institution,
+      designation,
+      address,
       country,
       eventId: event?.eventId || null,
       eventType: event?.eventType || null,

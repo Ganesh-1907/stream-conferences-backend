@@ -263,6 +263,7 @@ export async function createWebinar(req, res) {
       brochureUrl: brochureUrl || '',
       bannerUrl: bannerUrl || '',
       logoUrl: logoUrl || '',
+      subjectImageUrl: subjectImageUrl || '',
       headerBanners: Array.isArray(headerBanners) ? headerBanners : [],
       fees: Array.isArray(fees) ? fees : [],
       tracks: Array.isArray(tracks) ? tracks : [],
@@ -305,7 +306,7 @@ export async function updateWebinar(req, res) {
   const { id } = req.params;
   const {
     title, description, theme, themeColor, day, month, location, eventDate, startDate, endDate, slug,
-    speaker, startTime, endTime, brochureUrl, bannerUrl, logoUrl, headerBanners, fees, tracks, organizerContact,
+    speaker, startTime, endTime, brochureUrl, bannerUrl, logoUrl, subjectImageUrl, headerBanners, fees, tracks, organizerContact,
     subdomain, venue, assignedMentor, venueAddress, venueMapUrl,
     itinerary, speakers, program, faqs, sponsors, exhibitors, guidelines, scientificProgramUrl, termsAndConditions, venueDetails,
     organizingCommittee, partners, mediaPartners, welcomeBannerTitle, welcomeBannerDescription, socialLinks,
@@ -358,6 +359,7 @@ export async function updateWebinar(req, res) {
     if (brochureUrl !== undefined) item.brochureUrl = brochureUrl;
     if (bannerUrl !== undefined) item.bannerUrl = bannerUrl;
     if (logoUrl !== undefined) item.logoUrl = logoUrl;
+    if (subjectImageUrl !== undefined) item.subjectImageUrl = subjectImageUrl;
     if (headerBanners !== undefined) item.headerBanners = Array.isArray(headerBanners) ? headerBanners : [];
     if (fees !== undefined) item.fees = Array.isArray(fees) ? fees : [];
     if (tracks !== undefined) item.tracks = Array.isArray(tracks) ? tracks : [];

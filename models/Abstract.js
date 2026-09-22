@@ -1,12 +1,15 @@
 import mongoose from 'mongoose';
 
 const abstractSchema = new mongoose.Schema({
-  firstName: { type: String, required: true },
-  lastName: { type: String, required: true },
+  title: { type: String },
+  fullName: { type: String },
+  firstName: { type: String },
+  lastName: { type: String },
   name: { type: String },
   email: { type: String, required: true },
   phone: { type: String },
   institution: { type: String },
+  address: { type: String },
   country: { type: String },
   abstractFile: { type: String },
   track: { type: String },

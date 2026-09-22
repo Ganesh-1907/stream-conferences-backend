@@ -1,10 +1,13 @@
 import mongoose from 'mongoose';
 
 const registrationSchema = new mongoose.Schema({
+  title: { type: String },
+  fullName: { type: String },
   name: { type: String, required: true },
   email: { type: String, required: true },
   phone: { type: String },
   institution: { type: String, required: true },
+  address: { type: String },
   country: { type: String, required: true },
   category: { type: String, required: true },
   presentingAbstract: { type: String, default: 'no' },

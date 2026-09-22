@@ -22,12 +22,12 @@ export async function createVenue(req, res) {
       name,
       address: address || '',
       locationUrl: locationUrl || '',
-      createdBy: username
+      createdBy: username || 'admin'
     });
     res.status(201).json(item);
   } catch (error) {
     console.error('Create venue error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: error.message || 'Internal server error' });
   }
 }
 

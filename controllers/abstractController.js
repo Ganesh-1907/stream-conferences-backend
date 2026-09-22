@@ -57,9 +57,10 @@ export async function listAbstracts(req, res) {
 }
 
 export async function submitAbstract(req, res) {
-  const { firstName, lastName, name, email, phone, institution, country, track, summary, eventId, eventType, eventSlug, cohortId } = req.body;
+  const { title, fullName, firstName, lastName, name, email, phone, institution, address, country, track, summary, eventId, eventType, eventSlug, cohortId } = req.body;
   try {
-    if (!firstName || !lastName || !email) {
+    const finalFullName = fullName || name || `${firstName || ''} ${lastName || ''}`.trim();
+    if (!finalFullName || !email) {
       return res.status(400).json({ error: 'Missing required abstract fields' });
     }
     if (!req.file) {
@@ -82,15 +83,18 @@ export async function submitAbstract(req, res) {
       abstractFile = `/uploads/${key}`;
     }
 
-    const fullName = name || `${firstName} ${lastName}`.trim();
+    const displayName = title ? `${title} ${finalFullName}`.trim() : finalFullName;
 
     const item = await Abstract.create({
-      firstName,
-      lastName,
-      name: fullName,
+      title,
+      fullName: finalFullName,
+      firstName: firstName || title,
+      lastName: lastName || finalFullName,
+      name: displayName,
       email,
       phone,
       institution,
+      address,
       country,
       abstractFile,
       track,

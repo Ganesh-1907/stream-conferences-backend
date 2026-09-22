@@ -43,9 +43,10 @@ export async function listOrders(req, res) {
 }
 
 export async function createOrder(req, res) {
-  const { name, email, phone, category, amount, currency, registrationId, eventId, eventType, eventTitle, eventSlug, cohortId } = req.body;
+  const { title, fullName, name, email, phone, address, category, amount, currency, registrationId, eventId, eventType, eventTitle, eventSlug, cohortId } = req.body;
   try {
-    if (!name || !email || !category) {
+    const finalFullName = fullName || name;
+    if (!finalFullName || !email || !category) {
       return res.status(400).json({ error: 'Missing required order fields (name, email, category)' });
     }
 
@@ -61,11 +62,16 @@ export async function createOrder(req, res) {
       receipt
     });
 
+    const displayName = title ? `${title} ${finalFullName}`.trim() : finalFullName;
+
     const order = await Order.create({
       orderId: created.id,
-      name,
+      title,
+      fullName: finalFullName,
+      name: displayName,
       email,
       phone,
+      address,
       category,
       amount: amountInSubunit,
       currency: created.currency || orderCurrency,

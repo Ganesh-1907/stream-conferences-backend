@@ -116,7 +116,7 @@ export function createCohortForCourse(courseType) {
       const extraContent = content ? { ...content } : {};
       const CONTENT_KEYS = [
         'description', 'theme', 'themeColor', 'location', 'venue', 'venueAddress', 'venueMapUrl',
-        'startTime', 'endTime', 'speaker', 'brochureUrl', 'bannerUrl', 'logoUrl', 'headerBanners',
+        'startTime', 'endTime', 'speaker', 'brochureUrl', 'bannerUrl', 'logoUrl', 'subjectImageUrl', 'headerBanners',
         'fees', 'tracks', 'organizerContact', 'socialLinks', 'itinerary', 'speakers', 'program',
         'faqs', 'sponsors', 'exhibitors', 'partners', 'mediaPartners', 'guidelines',
         'scientificProgramUrl', 'termsAndConditions', 'organizingCommittee', 'venueDetails',

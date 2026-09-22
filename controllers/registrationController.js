@@ -37,9 +37,10 @@ export async function listRegistrations(req, res) {
 }
 
 export async function registerParticipant(req, res) {
-  const { name, email, phone, institution, country, category, presentingAbstract, eventId, eventType, eventSlug, cohortId } = req.body;
+  const { title, fullName, name, email, phone, institution, address, country, category, presentingAbstract, eventId, eventType, eventSlug, cohortId } = req.body;
   try {
-    if (!name || !email || !institution || !country || !category) {
+    const finalFullName = fullName || name;
+    if (!finalFullName || !email || !institution || !country || !category) {
       return res.status(400).json({ error: 'Missing required registration fields' });
     }
 
@@ -53,11 +54,16 @@ export async function registerParticipant(req, res) {
 
     const fullEvent = await fetchFullEvent(event?.eventId, event?.eventType);
 
+    const displayName = title ? `${title} ${finalFullName}`.trim() : finalFullName;
+
     const item = await Registration.create({
-      name,
+      title,
+      fullName: finalFullName,
+      name: displayName,
       email,
       phone,
       institution,
+      address,
       country,
       category,
       presentingAbstract: presentingAbstract || 'no',

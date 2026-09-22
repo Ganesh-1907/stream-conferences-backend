@@ -100,6 +100,7 @@ const conferenceSchema = new mongoose.Schema({
   brochureUrl: { type: String },
   bannerUrl: { type: String },
   logoUrl: { type: String },
+  subjectImageUrl: { type: String, default: '' },
   headerBanners: { type: [String], default: [] },
   fees: { type: [feeEntrySchema], default: [] },
   tracks: { type: [trackSchema], default: [] },
