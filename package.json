@@ -7,7 +7,9 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "seed": "node seed.js"
+    "seed": "node seed.js",
+    "mongo:start": "mongod --dbpath ../mongodb-data --port 27099 --bind_ip 127.0.0.1 --logpath ../mongodb-data/mongod.log --fork",
+    "mongo:stop": "mongod --dbpath ../mongodb-data --shutdown"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1121.0",
