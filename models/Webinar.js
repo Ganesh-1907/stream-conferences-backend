@@ -110,7 +110,7 @@ const webinarSchema = new mongoose.Schema({
   logoUrl: { type: String },
   subjectImageUrl: { type: String, default: '' },
   headerBanners: { type: [String], default: [] },
-  fees: { type: [feeEntrySchema], default: [] },
+  fees: { type: mongoose.Schema.Types.Mixed, default: [] },
   tracks: { type: [trackSchema], default: [] },
   organizerContact: {
     name: { type: String },

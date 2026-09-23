@@ -78,12 +78,42 @@ export async function registerParticipant(req, res) {
 
     // Build fee info for email
     const fees = fullEvent?.fees || [];
-    const matchedFee = fees.find((f) => f.type === category);
-    const feeHtml = fees.length
-      ? `<div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:14px 18px; margin:18px 0;">
-          <strong style="color:#0e7490;">Fee for ${category}:</strong> ${matchedFee ? `$${matchedFee.usd} USD / £${matchedFee.gbp} GBP / €${matchedFee.eur} EUR` : fees[0] ? `$${fees[0].usd} USD` : '—'}
-        </div>`
-      : '';
+    let feeHtml = '';
+    if (Array.isArray(fees) && fees.length > 0) {
+      if (fees[0] && (fees[0].categories || fees[0].title)) {
+        let matchedPrices = null;
+        for (const tier of fees) {
+          if (tier.categories) {
+            for (const cat of tier.categories) {
+              if (cat.name?.toLowerCase() === category?.toLowerCase()) {
+                if (cat.items && cat.items[0]) {
+                  matchedPrices = cat.items[0].prices;
+                  break;
+                }
+              }
+              if (cat.items) {
+                const item = cat.items.find(i => i.name?.toLowerCase().includes(category?.toLowerCase()));
+                if (item) {
+                  matchedPrices = item.prices;
+                  break;
+                }
+              }
+            }
+          }
+          if (matchedPrices) break;
+        }
+        if (matchedPrices) {
+          feeHtml = `<div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:14px 18px; margin:18px 0;">
+            <strong style="color:#0e7490;">Fee for ${category}:</strong> $${matchedPrices.USD || 0} USD / £${matchedPrices.GBP || 0} GBP / €${matchedPrices.EUR || 0} EUR
+          </div>`;
+        }
+      } else {
+        const matchedFee = fees.find((f) => f.type === category);
+        feeHtml = `<div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:14px 18px; margin:18px 0;">
+            <strong style="color:#0e7490;">Fee for ${category}:</strong> ${matchedFee ? `$${matchedFee.usd} USD / £${matchedFee.gbp} GBP / €${matchedFee.eur} EUR` : fees[0] ? `$${fees[0].usd} USD` : '—'}
+          </div>`;
+      }
+    }
 
     await sendMail({
       to: email,

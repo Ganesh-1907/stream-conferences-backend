@@ -141,11 +141,14 @@ export function initSocket(httpServer) {
           }
 
           const payloadOut = message.toObject ? message.toObject() : message;
+          const targetVisitorId = visitorId || session?.visitorId;
 
-          // Deliver to the admin room and to the specific visitor
+          // Deliver to admin rooms, session room, and to the specific visitor
           io.to(`session:${sessionId}`).emit('chat:message', payloadOut);
-          if (visitorId) {
-            const targetSocketId = visitorSockets.get(visitorId);
+          io.to('admins').emit('chat:message', payloadOut);
+          if (targetVisitorId) {
+            io.to(`visitor:${targetVisitorId}`).emit('chat:message', payloadOut);
+            const targetSocketId = visitorSockets.get(targetVisitorId);
             if (targetSocketId) {
               io.to(targetSocketId).emit('chat:message', payloadOut);
             }

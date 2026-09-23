@@ -361,7 +361,7 @@ export async function updateWebinar(req, res) {
     if (logoUrl !== undefined) item.logoUrl = logoUrl;
     if (subjectImageUrl !== undefined) item.subjectImageUrl = subjectImageUrl;
     if (headerBanners !== undefined) item.headerBanners = Array.isArray(headerBanners) ? headerBanners : [];
-    if (fees !== undefined) item.fees = Array.isArray(fees) ? fees : [];
+    if (fees !== undefined) { item.fees = Array.isArray(fees) ? fees : []; item.markModified('fees'); }
     if (tracks !== undefined) item.tracks = Array.isArray(tracks) ? tracks : [];
     if (organizerContact !== undefined) { item.organizerContact = organizerContact; item.markModified('organizerContact'); }
     if (socialLinks !== undefined) { item.socialLinks = socialLinks; item.markModified('socialLinks'); }
