@@ -1,7 +1,11 @@
 import mongoose from 'mongoose';
 
 const chatSessionSchema = new mongoose.Schema({
-  visitorId: { type: String, required: true, unique: true },
+  visitorId: { type: String, required: true },
+  conferenceId: { type: String, default: null, index: true },
+  eventId: { type: String, default: null },
+  conferenceTitle: { type: String, default: '' },
+  scope: { type: String, enum: ['main', 'conference'], default: 'main', index: true },
   visitorName: { type: String, default: 'Visitor' },
   visitorEmail: { type: String, default: '' },
   visitorPhone: { type: String, default: '' },
@@ -13,4 +17,7 @@ const chatSessionSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
+chatSessionSchema.index({ visitorId: 1, conferenceId: 1 });
+
 export const ChatSession = mongoose.models.ChatSession || mongoose.model('ChatSession', chatSessionSchema);
+

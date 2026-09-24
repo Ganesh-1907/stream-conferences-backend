@@ -1,14 +1,20 @@
 import nodemailer from 'nodemailer';
 
-const SMTP_HOST = process.env.SMTP_HOST;
-const SMTP_PORT = Number(process.env.SMTP_PORT || 587);
-const SMTP_SECURE = process.env.SMTP_SECURE === 'true';
-const EMAIL_USER = process.env.EMAIL_USER;
-const EMAIL_PASSWORD = process.env.EMAIL_PASSWORD;
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || EMAIL_USER;
+let transporterInstance = null;
 
-const transporter = SMTP_HOST && EMAIL_USER && EMAIL_PASSWORD
-  ? nodemailer.createTransport({
+function getTransporter() {
+  const SMTP_HOST = process.env.SMTP_HOST;
+  const SMTP_PORT = Number(process.env.SMTP_PORT || 587);
+  const SMTP_SECURE = process.env.SMTP_SECURE === 'true';
+  const EMAIL_USER = process.env.EMAIL_USER;
+  const EMAIL_PASSWORD = process.env.EMAIL_PASSWORD;
+
+  if (!SMTP_HOST || !EMAIL_USER || !EMAIL_PASSWORD) {
+    return null;
+  }
+
+  if (!transporterInstance) {
+    transporterInstance = nodemailer.createTransport({
       host: SMTP_HOST,
       port: SMTP_PORT,
       secure: SMTP_SECURE,
@@ -16,16 +22,23 @@ const transporter = SMTP_HOST && EMAIL_USER && EMAIL_PASSWORD
         user: EMAIL_USER,
         pass: EMAIL_PASSWORD
       }
-    })
-  : null;
+    });
+  }
+  return transporterInstance;
+}
 
-export const mailEnabled = Boolean(transporter);
+export function mailEnabled() {
+  return Boolean(getTransporter());
+}
 
 /**
  * Send an email. Returns { sent, info, error } so callers can safely ignore
  * delivery failures without crashing the request flow.
  */
 export async function sendMail({ to, subject, html, text, attachments }) {
+  const EMAIL_USER = process.env.EMAIL_USER;
+  const transporter = getTransporter();
+
   if (!transporter) {
     console.warn('[Mail] SMTP not configured. Skipping email:', subject);
     return { sent: false, error: 'SMTP not configured' };
@@ -47,4 +60,4 @@ export async function sendMail({ to, subject, html, text, attachments }) {
   }
 }
 
-export { ADMIN_EMAIL };
+export const ADMIN_EMAIL = process.env.ADMIN_EMAIL || process.env.EMAIL_USER;

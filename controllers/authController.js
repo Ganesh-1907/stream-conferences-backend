@@ -38,70 +38,162 @@ export async function login(req, res) {
 }
 
 export async function forgotPassword(req, res) {
-  const { username } = req.body;
+  const { username, email } = req.body;
+  const identifier = username || email;
   try {
-    if (!username) {
-      return res.status(400).json({ error: 'Username is required' });
+    if (!identifier) {
+      return res.status(400).json({ error: 'Username or email address is required' });
     }
 
-    const user = await User.findOne({ username });
+    const user = await User.findOne({
+      $or: [
+        { username: identifier },
+        { email: identifier }
+      ]
+    });
+
     if (!user) {
-      // Do not reveal whether the account exists.
-      return res.json({ success: true, message: 'If the account exists, a reset link has been sent.' });
+      return res.json({
+        success: true,
+        message: 'If the account exists, a password reset email has been dispatched.'
+      });
+    }
+
+    if (user.isActive === false) {
+      return res.status(403).json({
+        error: 'This account has been deactivated. Please contact the administrator.'
+      });
     }
 
     const token = crypto.randomBytes(32).toString('hex');
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
     user.resetToken = token;
-    user.resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+    user.resetTokenExpiry = expiry;
+    user.resetOtp = otp;
+    user.resetOtpExpiry = expiry;
     await user.save();
 
     const resetUrl = `${ADMIN_BASE}/reset-password?token=${token}`;
-    const recipient = user.email || process.env.ADMIN_EMAIL;
-    await sendMail({
+    const recipient = user.email || user.username || process.env.ADMIN_EMAIL;
+
+    const mailRes = await sendMail({
       to: recipient,
-      subject: 'Reset your Stream Conferences password',
+      subject: 'Stream Conferences Password Reset - OTP & Verification Link',
       html: `
-        <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto;">
-          <h2 style="color: #0e7490;">Reset your password</h2>
+        <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; line-height: 1.6; color: #333333;">
+          <h2 style="color: #0e7490;">Reset Your Password</h2>
           <p>Hi ${user.username},</p>
-          <p>We received a request to reset your admin console password. Click the button below to choose a new password.</p>
-          <p style="margin: 28px 0;">
-            <a href="${resetUrl}" style="background: #0e7490; color: #ffffff; text-decoration: none; padding: 12px 22px; border-radius: 6px; font-weight: bold;">Reset password</a>
+          <p>We received a request to reset your password for the Stream Conferences Portal.</p>
+          
+          <div style="background: #f0fdfa; border: 1px solid #99f6e4; padding: 18px; border-radius: 10px; margin: 24px 0; text-align: center;">
+            <p style="margin: 0 0 6px 0; font-size: 13px; color: #0f766e; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">Your 6-Digit OTP Code</p>
+            <p style="font-size: 32px; font-weight: 900; letter-spacing: 6px; color: #0f766e; margin: 0; font-family: monospace;">${otp}</p>
+            <p style="margin: 6px 0 0 0; font-size: 12px; color: #6b7280;">Valid for 1 hour</p>
+          </div>
+
+          <p style="margin-top: 20px;">Alternatively, you can click the button below to directly reset your password in your web browser:</p>
+          <p style="margin: 24px 0; text-align: center;">
+            <a href="${resetUrl}" style="background: #0e7490; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: bold; display: inline-block;">Reset Password Directly</a>
           </p>
-          <p style="color: #666; font-size: 13px;">This link expires in 1 hour. If you did not request this, you can safely ignore this email.</p>
+          <p style="color: #666; font-size: 13px;">If you did not request this password reset, please ignore this email.</p>
         </div>
       `,
-      text: `Hi ${user.username},\n\nReset your password here: ${resetUrl}\n\nThis link expires in 1 hour.`
+      text: `Hi ${user.username},\n\nYour 6-Digit OTP for password reset is: ${otp}\n\nAlternatively, reset your password here: ${resetUrl}\n\nThis OTP and link expire in 1 hour.`
     });
 
-    res.json({ success: true, message: 'If the account exists, a reset link has been sent.' });
+    console.log(`[Auth] Password reset initiated for ${user.username} (OTP: ${otp}) - Email sent: ${mailRes.sent}`);
+
+    res.json({
+      success: true,
+      message: `Password reset OTP and link have been dispatched to ${recipient}.`,
+      email: recipient
+    });
   } catch (error) {
     console.error('Forgot password error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 }
 
-export async function resetPassword(req, res) {
-  const { token, password } = req.body;
+export async function verifyOtp(req, res) {
+  const { username, email, otp } = req.body;
+  const identifier = username || email;
   try {
-    if (!token || !password) {
-      return res.status(400).json({ error: 'Token and new password are required' });
+    if (!identifier || !otp) {
+      return res.status(400).json({ error: 'Username/email and OTP code are required' });
+    }
+
+    const user = await User.findOne({
+      $or: [{ username: identifier }, { email: identifier }],
+      resetOtp: otp.toString().trim()
+    });
+
+    if (!user || !user.resetOtpExpiry || user.resetOtpExpiry.getTime() < Date.now()) {
+      return res.status(400).json({ error: 'Invalid or expired OTP code. Please check and try again.' });
+    }
+
+    if (user.isActive === false) {
+      return res.status(403).json({ error: 'This account has been deactivated. Please contact the administrator.' });
+    }
+
+    res.json({
+      success: true,
+      message: 'OTP verified successfully.',
+      token: user.resetToken
+    });
+  } catch (error) {
+    console.error('Verify OTP error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+export async function resetPassword(req, res) {
+  const { token, otp, email, username, password } = req.body;
+  try {
+    if (!password) {
+      return res.status(400).json({ error: 'New password is required' });
     }
     if (password.length < 6) {
       return res.status(400).json({ error: 'Password must be at least 6 characters' });
     }
 
-    const user = await User.findOne({ resetToken: token });
-    if (!user || !user.resetTokenExpiry || user.resetTokenExpiry.getTime() < Date.now()) {
-      return res.status(400).json({ error: 'Reset link is invalid or has expired' });
+    let user = null;
+
+    if (otp) {
+      const identifier = username || email;
+      if (!identifier) {
+        return res.status(400).json({ error: 'Username or email is required with OTP' });
+      }
+      user = await User.findOne({
+        $or: [{ username: identifier }, { email: identifier }],
+        resetOtp: otp.toString().trim()
+      });
+      if (!user || !user.resetOtpExpiry || user.resetOtpExpiry.getTime() < Date.now()) {
+        return res.status(400).json({ error: 'Invalid or expired OTP code' });
+      }
+    } else if (token) {
+      user = await User.findOne({ resetToken: token });
+      if (!user || !user.resetTokenExpiry || user.resetTokenExpiry.getTime() < Date.now()) {
+        return res.status(400).json({ error: 'Reset link is invalid or has expired' });
+      }
+    } else {
+      return res.status(400).json({ error: 'Reset token or OTP is required' });
     }
 
+    // Update password
     user.password = password;
     user.resetToken = undefined;
     user.resetTokenExpiry = undefined;
+    user.resetOtp = undefined;
+    user.resetOtpExpiry = undefined;
+    user.isTempPassword = false;
     await user.save();
 
-    res.json({ success: true, message: 'Password updated successfully' });
+    res.json({
+      success: true,
+      message: 'Password updated successfully. You can now log in.'
+    });
   } catch (error) {
     console.error('Reset password error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -204,11 +296,15 @@ export async function changePassword(req, res) {
 export async function toggleMentorStatus(req, res) {
   const { username } = req.params;
   try {
-    const user = await User.findOne({ username, role: 'mentor' });
+    const user = await User.findOne({
+      $or: [{ username }, { email: username }],
+      role: 'mentor'
+    });
     if (!user) {
-      return res.status(404).json({ error: 'Mentor not found' });
+      return res.status(404).json({ error: 'Mentor user account not found' });
     }
-    user.isActive = !user.isActive;
+    const currentStatus = user.isActive !== false;
+    user.isActive = !currentStatus;
     await user.save();
     res.json({ 
       success: true, 

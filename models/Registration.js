@@ -11,6 +11,15 @@ const registrationSchema = new mongoose.Schema({
   country: { type: String, required: true },
   category: { type: String, required: true },
   presentingAbstract: { type: String, default: 'no' },
+  billingInfo: {
+    title: { type: String },
+    fullName: { type: String },
+    email: { type: String },
+    phone: { type: String },
+    institution: { type: String },
+    country: { type: String },
+    address: { type: String }
+  },
   eventId: { type: String },
   eventType: { type: String, enum: ['conference', 'webinar'], default: 'conference' },
   eventTitle: { type: String },

@@ -7,6 +7,8 @@ const userSchema = new mongoose.Schema({
   role: { type: String, required: true, enum: ['admin', 'mentor'] },
   resetToken: { type: String },
   resetTokenExpiry: { type: Date },
+  resetOtp: { type: String },
+  resetOtpExpiry: { type: Date },
   isTempPassword: { type: Boolean, default: false },
   isActive: { type: Boolean, default: true }
 });

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import {
   getOrCreateSession,
   getVisitorHistory,
+  sendVisitorMessage,
   listSessions,
   getMessages,
   sendAdminMessage,
@@ -11,9 +12,10 @@ import {
 
 const router = Router();
 
-// Public: the visitor widget creates/fetches its session
+// Public: the visitor widget creates/fetches its session and sends messages
 router.post('/session', getOrCreateSession);
 router.get('/visitor/:visitorId/history', getVisitorHistory);
+router.post('/visitor/message', sendVisitorMessage);
 
 // Team members (admin/mentor) access these
 router.get('/sessions', listSessions);

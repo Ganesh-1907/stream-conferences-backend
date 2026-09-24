@@ -37,7 +37,7 @@ export async function listRegistrations(req, res) {
 }
 
 export async function registerParticipant(req, res) {
-  const { title, fullName, name, email, phone, institution, address, country, category, presentingAbstract, eventId, eventType, eventSlug, cohortId } = req.body;
+  const { title, fullName, name, email, phone, institution, address, country, category, presentingAbstract, eventId, eventType, eventSlug, cohortId, billingInfo } = req.body;
   try {
     const finalFullName = fullName || name;
     if (!finalFullName || !email || !institution || !country || !category) {
@@ -66,6 +66,7 @@ export async function registerParticipant(req, res) {
       address,
       country,
       category,
+      billingInfo: billingInfo || null,
       presentingAbstract: presentingAbstract || 'no',
       eventId: event?.eventId || null,
       eventType: event?.eventType || null,
