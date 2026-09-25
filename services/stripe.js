@@ -18,6 +18,9 @@ export function createStripePaymentIntent({
   orderId,
   description,
   receiptEmail,
+  customerName,
+  customerAddress,
+  customerCountry,
   metadata = {}
 }) {
   if (!stripe) {
@@ -32,6 +35,10 @@ export function createStripePaymentIntent({
     });
   }
 
+  // India export compliance: international payments require the customer's
+  // name and billing address (with a valid 2-letter ISO-3166 country code).
+  const hasCustomer = Boolean(customerName || customerAddress || customerCountry);
+
   return stripe.paymentIntents
     .create({
       amount,
@@ -39,7 +46,18 @@ export function createStripePaymentIntent({
       description,
       receipt_email: receiptEmail || undefined,
       metadata: { ...(orderId ? { orderId } : {}), ...metadata },
-      automatic_payment_methods: { enabled: true }
+      automatic_payment_methods: { enabled: true },
+      ...(hasCustomer
+        ? {
+            shipping: {
+              name: customerName || undefined,
+              address: {
+                line1: customerAddress || undefined,
+                country: customerCountry || undefined
+              }
+            }
+          }
+        : {})
     })
     .then((intent) => ({
       id: intent.id,

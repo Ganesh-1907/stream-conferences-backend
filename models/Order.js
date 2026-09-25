@@ -10,6 +10,7 @@ const orderSchema = new mongoose.Schema({
   email: { type: String, required: true },
   phone: { type: String },
   address: { type: String },
+  country: { type: String },
   category: { type: String, required: true },
   amount: { type: Number, required: true },
   currency: { type: String, default: 'INR' },

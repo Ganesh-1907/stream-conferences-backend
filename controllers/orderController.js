@@ -46,7 +46,7 @@ export async function listOrders(req, res) {
 }
 
 export async function createOrder(req, res) {
-  const { title, fullName, name, email, phone, address, category, amount, currency, registrationId, eventId, eventType, eventTitle, eventSlug, cohortId } = req.body;
+  const { title, fullName, name, email, phone, address, country, category, amount, currency, registrationId, eventId, eventType, eventTitle, eventSlug, cohortId } = req.body;
   try {
     const finalFullName = fullName || name;
     if (!finalFullName || !email || !category) {
@@ -76,6 +76,9 @@ export async function createOrder(req, res) {
         orderId,
         description: `${eventTitle || 'Event registration'} — ${category}`,
         receiptEmail: email,
+        customerName: displayName,
+        customerAddress: address || undefined,
+        customerCountry: country || undefined,
         metadata: {
           registrationId: registrationId || '',
           eventId: eventId || '',
@@ -99,6 +102,7 @@ export async function createOrder(req, res) {
       email,
       phone,
       address,
+      country: country || null,
       category,
       amount: amountInSubunit,
       currency: (created.currency || orderCurrency).toUpperCase(),
