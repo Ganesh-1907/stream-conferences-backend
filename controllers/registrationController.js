@@ -1,6 +1,5 @@
 import { Registration } from '../models/Registration.js';
 import { Conference } from '../models/Conference.js';
-import { Webinar } from '../models/Webinar.js';
 import { sendMail } from '../services/mail.js';
 import { resolveEventByRef } from '../services/eventResolver.js';
 import { registrationLink } from '../services/eventLink.js';
@@ -17,8 +16,7 @@ async function resolveEvent(eventId, eventType) {
 /** Fetch the full event document for email branding. */
 async function fetchFullEvent(eventId, eventType) {
   if (!eventId) return null;
-  const Model = eventType === 'webinar' ? Webinar : Conference;
-  return Model.findById(eventId).lean();
+  return Conference.findById(eventId).lean();
 }
 
 export async function listRegistrations(req, res) {

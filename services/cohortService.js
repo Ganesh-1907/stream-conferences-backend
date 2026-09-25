@@ -1,10 +1,8 @@
 import { CourseCohort } from '../models/CourseCohort.js';
 import { Conference } from '../models/Conference.js';
-import { Webinar } from '../models/Webinar.js';
 
 const COURSE_MODEL = {
   conference: Conference,
-  webinar: Webinar,
 };
 
 // Website content fields that live on a cohort (everything except the course shell).

@@ -1,6 +1,5 @@
 import { ChatMessage } from '../models/ChatMessage.js';
 import { Conference } from '../models/Conference.js';
-import { Webinar } from '../models/Webinar.js';
 
 // GET /api/chat-messages?conferenceId=...
 export async function getChatMessages(req, res) {
@@ -15,7 +14,7 @@ export async function getChatMessages(req, res) {
         { slug: conferenceId }
       ].filter(Boolean);
 
-      const conf = await Conference.findOne({ $or: searchConditions }) || await Webinar.findOne({ $or: searchConditions });
+      const conf = await Conference.findOne({ $or: searchConditions });
 
       if (conf) {
         const ids = [conf._id.toString(), conf.eventId, conf.slug].filter(Boolean);

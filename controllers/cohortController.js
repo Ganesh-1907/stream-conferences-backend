@@ -1,6 +1,5 @@
 import { CourseCohort } from '../models/CourseCohort.js';
 import { Conference } from '../models/Conference.js';
-import { Webinar } from '../models/Webinar.js';
 import { getUserContext } from '../middleware/auth.js';
 import {
   listCohorts,
@@ -13,7 +12,6 @@ import { sanitizeSubdomain } from '../services/slug.js';
 
 const COURSE_MODEL = {
   conference: Conference,
-  webinar: Webinar,
 };
 
 function parseDate(value) {
@@ -105,9 +103,8 @@ export function createCohortForCourse(courseType) {
           resolvedSubdomain = null;
         } else {
           const subExistsConf = await Conference.findOne({ subdomain: resolvedSubdomain, _id: { $ne: id } });
-          const subExistsWeb = await Webinar.findOne({ subdomain: resolvedSubdomain, _id: { $ne: id } });
           const subExistsCohort = await CourseCohort.findOne({ subdomain: resolvedSubdomain });
-          if (subExistsConf || subExistsWeb || subExistsCohort) {
+          if (subExistsConf || subExistsCohort) {
             resolvedSubdomain = null;
           }
         }
@@ -216,9 +213,8 @@ export async function updateCohort(req, res) {
           resolved = null;
         } else {
           const subExistsConf = await Conference.findOne({ subdomain: resolved, _id: { $ne: cohort.courseId } });
-          const subExistsWeb = await Webinar.findOne({ subdomain: resolved, _id: { $ne: cohort.courseId } });
           const subExistsCohort = await CourseCohort.findOne({ subdomain: resolved, _id: { $ne: cohort._id } });
-          if (subExistsConf || subExistsWeb || subExistsCohort) {
+          if (subExistsConf || subExistsCohort) {
             resolved = null;
           }
         }

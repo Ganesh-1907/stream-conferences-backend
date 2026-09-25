@@ -2,7 +2,6 @@ import 'dotenv/config';
 import mongoose from 'mongoose';
 import { User } from './models/User.js';
 import { Conference } from './models/Conference.js';
-import { Webinar } from './models/Webinar.js';
 import { Blog } from './models/Blog.js';
 import { Abstract } from './models/Abstract.js';
 import { Registration } from './models/Registration.js';
@@ -77,21 +76,6 @@ const CONFERENCE_TRACK_POOL = [
   'Wearable & Biosensor Technology',
   'Microbiome Research',
   'Translational Research',
-];
-
-const WEBINAR_TRACK_POOL = [
-  'AI in Medical Imaging',
-  'Digital Therapeutics',
-  'Telehealth Expansion',
-  'Genomic Diagnostics',
-  'Clinical Data Privacy',
-  'Health Equity',
-  'Remote Patient Monitoring',
-  'Biosensor Engineering',
-  'Regulatory Affairs',
-  'Medical Device Innovation',
-  'Public Health Communication',
-  'Healthcare Cybersecurity',
 ];
 
 function buildTracks(pool, count) {
@@ -179,17 +163,6 @@ const conferenceDefs = [
   { title: 'Next-Gen Bioinformatics & Genomics Congress', slug: 'bioinformatics', location: 'San Francisco, California · In person', day: '15–17', month: 'JUN 27', offset: 290, startH: 9, endH: '17:00', contact: 'Dr. Alex Wong', trackCount: 14, speakerCount: 8 },
   { title: 'Cardiovascular Medicine & Digital Therapeutics Summit', slug: 'cardiovascular-digital', location: 'Tokyo, Japan · In person', day: '02–03', month: 'OCT 27', offset: 350, startH: 9, endH: '17:30', contact: 'Dr. Kenji Tanaka', trackCount: 10, speakerCount: 6 },
   { title: 'Applied Intelligence & Emerging Technologies Forum', slug: 'applied-intelligence', location: 'Singapore · In person', day: '08–09', month: 'MAY 27', offset: 260, startH: 9, endH: '18:00', contact: 'Prof. Daniel Okafor', trackCount: 12, speakerCount: 7 },
-];
-
-// ---------------------------------------------------------------------------
-// WEBINARS (5)
-// ---------------------------------------------------------------------------
-const webinarDefs = [
-  { title: 'Precision systems: turning data into better decisions', slug: 'precision-systems', speaker: 'Dr. Amina Rao', offset: 55, startH: 14, endH: '15:30', trackCount: 10 },
-  { title: 'Engineering resilient cities under pressure', slug: 'resilient-cities', speaker: 'Prof. Daniel Okafor', offset: 100, startH: 16, endH: '17:30', trackCount: 10 },
-  { title: 'The evidence gap: building trust in public health', slug: 'evidence-gap', speaker: 'Dr. Leila Morgan', offset: 150, startH: 13, endH: '14:30', trackCount: 10 },
-  { title: 'AI in drug discovery: accelerating the pipeline', slug: 'ai-drug-discovery', speaker: 'Dr. Sarah Chen', offset: 180, startH: 15, endH: '16:30', trackCount: 10 },
-  { title: 'Quantum computing in biotechnology', slug: 'quantum-biotech', speaker: 'Dr. Katrin Schmidt', offset: 220, startH: 10, endH: '11:30', trackCount: 10 },
 ];
 
 // ---------------------------------------------------------------------------
@@ -313,7 +286,6 @@ async function seed() {
 
     // 3. Clear event data
     await Conference.deleteMany({});
-    await Webinar.deleteMany({});
     await Blog.deleteMany({});
     await CourseCohort.deleteMany({});
     await Abstract.deleteMany({});
@@ -366,38 +338,7 @@ async function seed() {
       console.log(`[Seed] Conference: ${def.title} -> ${doc.eventId} (${def.trackCount} tracks, ${def.speakerCount} speakers)`);
     }
 
-    // 5. Webinars
-    const webDocs = [];
-    for (const def of webinarDefs) {
-      const startDate = d(def.offset, def.startH);
-      const tracks = buildTracks(WEBINAR_TRACK_POOL, def.trackCount);
-      const doc = await Webinar.create({
-        title: def.title,
-        slug: def.slug,
-        description: `Live online webinar: ${def.title}. Interactive session with live Q&A and downloadable resources.`,
-        theme: 'Digital Knowledge Exchange',
-        day: String(startDate.getDate()),
-        month: `${['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'][startDate.getMonth()]} ${String(startDate.getFullYear()).slice(-2)}`,
-        location: `Online · ${String(def.startH).padStart(2, '0')}:00 UTC`,
-        eventDate: startDate,
-        startDate,
-        endDate: startDate,
-        subdomain: def.slug,
-        startTime: `${String(def.startH).padStart(2, '0')}:00`,
-        endTime: def.endH,
-        speaker: def.speaker,
-        fees: [{ type: 'Standard', dateLabel: 'General', usd: 150, gbp: 170, eur: 180 }],
-        tracks,
-        faqs: buildFaqs(def.title),
-        organizerContact: { name: def.speaker, email: 'webinars@streamconferences.com', phone: '+91 98765 43210' },
-        announcedBy: 'admin',
-        assignedMentor: mentorUsers[webDocs.length % mentorUsers.length][0],
-      });
-      webDocs.push(doc);
-      console.log(`[Seed] Webinar: ${def.title} -> ${doc.eventId} (${def.trackCount} tracks)`);
-    }
-
-    // 6. Blogs
+    // 5. Blogs
     for (const def of blogDefs) {
       const doc = await Blog.create({
         title: def.title,
@@ -409,18 +350,14 @@ async function seed() {
       console.log(`[Seed] Blog: ${def.title} -> ${doc.eventId}`);
     }
 
-    // 7. Cohorts
-    // Initial cohort for every conference and webinar
+    // 6. Cohorts
+    // Initial cohort for every conference
     for (const c of confDocs) {
       await ensureInitialCohort('conference', c);
     }
-    for (const w of webDocs) {
-      await ensureInitialCohort('webinar', w);
-    }
 
-    // Extra cohorts: 2 conferences get a 2nd cohort; 1 webinar gets a 2nd cohort
+    // Extra cohorts: 2 conferences get a 2nd cohort
     const extraConferenceCohorts = [confDocs[0], confDocs[1]];
-    const extraWebinarCohorts = [webDocs[0]];
 
     const createExtraCohort = async (courseType, course, batchNo) => {
       const year = (course.startDate || course.eventDate) ? new Date(course.startDate || course.eventDate).getFullYear() : new Date().getFullYear();
@@ -446,12 +383,8 @@ async function seed() {
       await createExtraCohort('conference', c, 2);
       console.log(`[Seed] Conference extra cohort added: ${c.eventId}-2`);
     }
-    for (const w of extraWebinarCohorts) {
-      await createExtraCohort('webinar', w, 2);
-      console.log(`[Seed] Webinar extra cohort added: ${w.eventId}-2`);
-    }
 
-    // 8. Abstracts & registrations attached to first conference
+    // 7. Abstracts & registrations attached to first conference
     const abstractSeeds = [
       ['Alice', 'Martin', 'alice.martin@example.com', 'MIT', 'United States', 'Artificial Intelligence & Machine Learning', 'pending'],
       ['Ravi', 'Patel', 'ravi.patel@example.com', 'IIT Bombay', 'India', 'Bioinformatics', 'approved'],
@@ -522,12 +455,11 @@ async function seed() {
     }
     console.log(`[Seed] ${participantSeeds.length} participants added`);
 
-    // 9. Summary
+    // 8. Summary
     const summary = {
       users: await User.countDocuments(),
       mentors: await MentorProfile.countDocuments(),
       conferences: await Conference.countDocuments(),
-      webinars: await Webinar.countDocuments(),
       blogs: await Blog.countDocuments(),
       cohorts: await CourseCohort.countDocuments(),
       abstracts: await Abstract.countDocuments(),

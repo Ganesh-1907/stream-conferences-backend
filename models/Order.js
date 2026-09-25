@@ -22,7 +22,7 @@ const orderSchema = new mongoose.Schema({
   eventSlug: { type: String },
   cohortId: { type: String },
   status: { type: String, enum: ['pending', 'paid', 'failed'], default: 'pending' },
-  mode: { type: String, enum: ['razorpay', 'mock'], default: 'razorpay' },
+  mode: { type: String, enum: ['razorpay', 'stripe', 'mock'], default: 'razorpay' },
   createdAt: { type: Date, default: Date.now }
 });
 

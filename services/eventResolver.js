@@ -1,5 +1,4 @@
 import { Conference } from '../models/Conference.js';
-import { Webinar } from '../models/Webinar.js';
 import { CourseCohort } from '../models/CourseCohort.js';
 
 const OBJECT_ID = /^[0-9a-fA-F]{24}$/;
@@ -17,8 +16,6 @@ export async function resolveEventByRef(ref) {
   if (OBJECT_ID.test(str)) {
     const conf = await Conference.findById(str).lean();
     if (conf) return normalize(conf, 'conference');
-    const web = await Webinar.findById(str).lean();
-    if (web) return normalize(web, 'webinar');
     return null;
   }
 
@@ -27,11 +24,6 @@ export async function resolveEventByRef(ref) {
     $or: [{ eventId: ci }, { slug: str }, { subdomain: ci }]
   }).lean();
   if (conf) return normalize(conf, 'conference');
-
-  const web = await Webinar.findOne({
-    $or: [{ eventId: ci }, { slug: str }, { subdomain: ci }]
-  }).lean();
-  if (web) return normalize(web, 'webinar');
 
   return null;
 }
@@ -43,8 +35,7 @@ export async function findBySubdomain(subdomain) {
   // Cohort subdomains take priority (e.g. "event-2026").
   const cohort = await CourseCohort.findOne({ subdomain: ci }).lean();
   if (cohort) {
-    const Model = cohort.courseType === 'webinar' ? Webinar : Conference;
-    const course = await Model.findById(cohort.courseId).lean();
+    const course = await Conference.findById(cohort.courseId).lean();
     if (course) {
       return normalize(course, cohort.courseType, cohort._id);
     }
@@ -55,16 +46,9 @@ export async function findBySubdomain(subdomain) {
   }).lean();
   if (conf) return normalize(conf, 'conference');
 
-  const web = await Webinar.findOne({
-    $or: [{ subdomain: ci }, { eventId: ci }, { slug: subdomain }]
-  }).lean();
-  if (web) return normalize(web, 'webinar');
-
   if (OBJECT_ID.test(subdomain)) {
     const confById = await Conference.findById(subdomain).lean();
     if (confById) return normalize(confById, 'conference');
-    const webById = await Webinar.findById(subdomain).lean();
-    if (webById) return normalize(webById, 'webinar');
   }
 
   return null;

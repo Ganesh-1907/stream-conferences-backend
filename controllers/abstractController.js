@@ -1,6 +1,5 @@
 import { Abstract } from '../models/Abstract.js';
 import { Conference } from '../models/Conference.js';
-import { Webinar } from '../models/Webinar.js';
 import { r2Enabled, uploadToR2 } from '../services/r2.js';
 import { sendMail } from '../services/mail.js';
 import { resolveEventByRef } from '../services/eventResolver.js';
@@ -42,8 +41,7 @@ async function resolveEvent(eventId, eventType, eventSlug) {
 /** Fetch the full event document (with logoUrl, fees, etc.) for email branding. */
 async function fetchFullEvent(eventId, eventType) {
   if (!eventId) return null;
-  const Model = eventType === 'webinar' ? Webinar : Conference;
-  return Model.findById(eventId).lean();
+  return Conference.findById(eventId).lean();
 }
 
 export async function listAbstracts(req, res) {
@@ -139,8 +137,7 @@ async function resolveFullEvent(abstract) {
   if (!ref) return null;
   const normalized = await resolveEventByRef(ref);
   if (!normalized) return null;
-  const Model = normalized.eventType === 'webinar' ? Webinar : Conference;
-  return Model.findById(normalized.eventId).lean();
+  return Conference.findById(normalized.eventId).lean();
 }
 
 export async function approveAbstract(req, res) {

@@ -1,7 +1,6 @@
 import mongoose from 'mongoose';
 import { User } from './models/User.js';
 import { Conference } from './models/Conference.js';
-import { Webinar } from './models/Webinar.js';
 import { generateSlug, sanitizeSubdomain } from './services/slug.js';
 import { ensureInitialCohort } from './services/cohortService.js';
 
@@ -80,15 +79,8 @@ async function migrateCourseCohorts() {
       conferenceCount += 1;
     }
 
-    let webinarCount = 0;
-    const webinars = await Webinar.find({ currentCohortId: null });
-    for (const w of webinars) {
-      await ensureInitialCohort('webinar', w);
-      webinarCount += 1;
-    }
-
-    if (conferenceCount || webinarCount) {
-      console.log(`[Database] Backfilled initial cohort for ${conferenceCount} conference(s) and ${webinarCount} webinar(s)`);
+    if (conferenceCount) {
+      console.log(`[Database] Backfilled initial cohort for ${conferenceCount} conference(s)`);
     }
   } catch (err) {
     console.error('[Database] course cohort migration failed:', err);

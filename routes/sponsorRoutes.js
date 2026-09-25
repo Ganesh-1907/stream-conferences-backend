@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import { Conference } from '../models/Conference.js';
-import { Webinar } from '../models/Webinar.js';
 
 const router = Router();
 
@@ -10,7 +9,7 @@ router.get('/all', async (req, res) => {
     const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 10));
     const skip = (page - 1) * limit;
 
-    const [confSponsors, webSponsors] = await Promise.all([
+    const [confSponsors] = await Promise.all([
       Conference.aggregate([
         { $unwind: { path: '$sponsors', preserveNullAndEmptyArrays: false } },
         { $match: { 'sponsors.name': { $ne: '' } } },
@@ -28,26 +27,9 @@ router.get('/all', async (req, res) => {
           },
         },
       ]),
-      Webinar.aggregate([
-        { $unwind: { path: '$sponsors', preserveNullAndEmptyArrays: false } },
-        { $match: { 'sponsors.name': { $ne: '' } } },
-        {
-          $project: {
-            _id: 0,
-            sponsorId: { $toString: '$_id' },
-            name: '$sponsors.name',
-            title: '$sponsors.title',
-            logo: '$sponsors.logo',
-            order: '$sponsors.order',
-            eventTitle: '$title',
-            eventType: { $literal: 'webinar' },
-            createdAt: '$createdAt',
-          },
-        },
-      ]),
     ]);
 
-    const all = [...confSponsors, ...webSponsors].sort(
+    const all = [...confSponsors].sort(
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
 

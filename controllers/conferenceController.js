@@ -432,6 +432,11 @@ export async function deleteConference(req, res) {
       return res.status(403).json({ error: 'Forbidden: Cannot delete another user\'s conference' });
     }
     await Conference.findByIdAndDelete(id);
+    await CourseCohort.deleteMany({ courseType: 'conference', courseId: id });
+    await Registration.deleteMany({ eventId: { $in: [id, item.eventId] } });
+    await Order.deleteMany({ eventId: { $in: [id, item.eventId] } });
+    await Abstract.deleteMany({ eventId: { $in: [id, item.eventId] } });
+    await Contact.deleteMany({ eventId: { $in: [id, item.eventId] } });
     res.json({ success: true });
   } catch (error) {
     console.error('Delete conference error:', error);

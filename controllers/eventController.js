@@ -1,7 +1,6 @@
 import { findBySubdomain } from '../services/eventResolver.js';
 import { registrationLink } from '../services/eventLink.js';
 import { Conference } from '../models/Conference.js';
-import { Webinar } from '../models/Webinar.js';
 import { CourseCohort } from '../models/CourseCohort.js';
 import { listCohorts, getCurrentCohort, serializeCohort } from '../services/cohortService.js';
 
@@ -14,8 +13,7 @@ export async function getEventBySubdomain(req, res) {
       return res.status(404).json({ error: 'Event not found' });
     }
 
-    const Model = normalized.eventType === 'webinar' ? Webinar : Conference;
-    const event = await Model.findById(normalized.eventId).lean();
+    const event = await Conference.findById(normalized.eventId).lean();
     if (!event) {
       return res.status(404).json({ error: 'Event not found' });
     }
