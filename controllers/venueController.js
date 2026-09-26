@@ -33,7 +33,7 @@ export async function createVenue(req, res) {
 
 export async function updateVenue(req, res) {
   const { id } = req.params;
-  const { name, address, locationUrl } = req.body;
+  const { name, address, locationUrl, isActive } = req.body;
   try {
     const item = await Venue.findById(id);
     if (!item) {
@@ -42,6 +42,7 @@ export async function updateVenue(req, res) {
     if (name !== undefined) item.name = name;
     if (address !== undefined) item.address = address;
     if (locationUrl !== undefined) item.locationUrl = locationUrl;
+    if (isActive !== undefined) item.isActive = Boolean(isActive);
     await item.save();
     res.json(item);
   } catch (error) {

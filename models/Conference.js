@@ -148,6 +148,7 @@ const conferenceSchema = new mongoose.Schema({
     endTime: { type: String },
     mainImage: { type: String, default: '' },
     subImages: { type: [String], default: [] },
+    cityHighlights: { type: [String], default: [] },
     description: { type: String },
     images: { type: [String], default: [] },
     moreInfo: { type: String }
