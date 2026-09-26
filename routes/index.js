@@ -28,6 +28,8 @@ import { Registration } from '../models/Registration.js';
 import { Abstract } from '../models/Abstract.js';
 import { Order } from '../models/Order.js';
 import { CourseCohort } from '../models/CourseCohort.js';
+import { Venue } from '../models/Venue.js';
+import { User } from '../models/User.js';
 
 const router = Router();
 
@@ -52,8 +54,8 @@ router.get('/stats', async (req, res) => {
       confIds = [...new Set([...confCohorts.map(c => c.courseId.toString()), ...confParentIds.map(p => p._id.toString())])];
       if (!confIds.length) {
         return res.json({
-          counts: { conferences: 0, blogs: 0, registrations: 0, abstracts: 0, confUpcoming: 0, confPast: 0 },
-          revenue: { total: 0, paidOrders: 0, totalOrders: 0 },
+          counts: { conferences: 0, blogs: 0, registrations: 0, abstracts: 0, confUpcoming: 0, confPast: 0, venues: 0, mentors: 0 },
+          revenue: { total: 0, paidOrders: 0, totalOrders: 0, currencies: [] },
           registrations: { paid: 0, unpaid: 0, pending: 0 },
           monthly: { conferences: [] },
           yearly: { conferences: [] },
@@ -66,13 +68,15 @@ router.get('/stats', async (req, res) => {
     const mentorOrAssigned = role === 'mentor' ? { $or: [{ announcedBy: username }, { assignedMentor: username }] } : {};
     const blogFilter = role === 'mentor' ? { announcedBy: username } : {};
 
-    const [confCount, blogCount, regCount, absCount, confUpcoming, confPast] = await Promise.all([
+    const [confCount, blogCount, regCount, absCount, confUpcoming, confPast, venueCount, mentorCount] = await Promise.all([
       Conference.countDocuments(mentorConfFilter),
       Blog.countDocuments(blogFilter),
       Registration.countDocuments(mentorOrAssigned),
       Abstract.countDocuments(mentorOrAssigned),
       Conference.countDocuments({ ...mentorConfFilter, eventDate: { $gte: now } }),
       Conference.countDocuments({ ...mentorConfFilter, eventDate: { $lt: now, $ne: null } }),
+      Venue.countDocuments({}),
+      User.countDocuments({ role: 'mentor' }),
     ]);
 
     const [recentConfs, recentBlogs, recentRegs, recentAbs] = await Promise.all([
@@ -83,11 +87,33 @@ router.get('/stats', async (req, res) => {
     ]);
 
     const [paidOrders, totalOrders] = await Promise.all([
-      Order.find({ ...mentorOrAssigned, status: 'paid' }).select('amount eventType createdAt'),
+      Order.find({ ...mentorOrAssigned, status: 'paid' }).select('amount currency originalCurrency originalAmount createdAt').lean(),
       Order.countDocuments(mentorOrAssigned),
     ]);
     const totalRevenue = paidOrders.reduce((sum, o) => sum + (o.amount || 0), 0);
     const paidCount = paidOrders.length;
+
+    const currencies = [
+      { currency: 'USD', symbol: '$', label: 'US Dollar' },
+      { currency: 'EUR', symbol: '€', label: 'Euro' },
+      { currency: 'GBP', symbol: '£', label: 'British Pound' },
+    ].map(({ currency, symbol, label }) => {
+      const orders = paidOrders.filter(o => {
+        const c = (o.originalCurrency || o.currency || 'USD').toUpperCase();
+        return c === currency;
+      });
+      const total = orders.reduce((sum, o) => {
+        const val = o.originalAmount !== undefined && o.originalAmount !== null ? o.originalAmount : o.amount;
+        return sum + (Number(val) || 0);
+      }, 0);
+      return {
+        currency,
+        symbol,
+        label,
+        amount: total,
+        count: orders.length,
+      };
+    });
 
     const yearStart = new Date(now.getFullYear(), 0, 1);
     const [confMonthly] = await Promise.all([
@@ -113,8 +139,22 @@ router.get('/stats', async (req, res) => {
     ]);
 
     res.json({
-      counts: { conferences: confCount, blogs: blogCount, registrations: regCount, abstracts: absCount, confUpcoming, confPast },
-      revenue: { total: totalRevenue, paidOrders: paidCount, totalOrders },
+      counts: {
+        conferences: confCount,
+        blogs: blogCount,
+        registrations: regCount,
+        abstracts: absCount,
+        confUpcoming,
+        confPast,
+        venues: venueCount,
+        mentors: mentorCount,
+      },
+      revenue: {
+        total: totalRevenue,
+        paidOrders: paidCount,
+        totalOrders,
+        currencies,
+      },
       registrations: { paid: regPaid, unpaid: regUnpaid, pending: regPending },
       monthly: { conferences: confMonthly },
       yearly: { conferences: confYearly },
