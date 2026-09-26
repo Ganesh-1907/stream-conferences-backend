@@ -212,7 +212,7 @@ export async function getConference(req, res) {
 export async function createConference(req, res) {
   const { username } = getUserContext(req);
   const {
-    title, description, theme, themeColor, day, month, location, eventDate, startDate, endDate, slug,
+    title, description, theme, themeColor, heroThemeColor, day, month, location, eventDate, startDate, endDate, slug,
     startTime, endTime, brochureUrl, bannerUrl, logoUrl, headerBanners, fees, tracks, organizerContact,
     subdomain, venue, assignedMentor, venueAddress, venueMapUrl,
     itinerary, speakers, program, faqs, sponsors, exhibitors, guidelines, scientificProgramUrl, termsAndConditions, venueDetails,
@@ -244,6 +244,7 @@ export async function createConference(req, res) {
       description: description || '',
       theme: theme || '',
       themeColor: themeColor || '',
+      heroThemeColor: heroThemeColor || '',
       day: day || '',
       month: month || '',
       location: location || '',
@@ -303,7 +304,7 @@ export async function updateConference(req, res) {
   const { role, username } = getUserContext(req);
   const { id } = req.params;
   const {
-    title, description, theme, themeColor, day, month, location, eventDate, startDate, endDate, slug,
+    title, description, theme, themeColor, heroThemeColor, day, month, location, eventDate, startDate, endDate, slug,
     startTime, endTime, brochureUrl, bannerUrl, logoUrl, subjectImageUrl, headerBanners, fees, tracks, organizerContact,
     subdomain, venue, assignedMentor, venueAddress, venueMapUrl,
     itinerary, speakers, program, faqs, sponsors, exhibitors, guidelines, scientificProgramUrl, termsAndConditions, venueDetails,
@@ -323,6 +324,7 @@ export async function updateConference(req, res) {
     item.description = description ?? item.description;
     item.theme = theme ?? item.theme;
     if (themeColor !== undefined) item.themeColor = themeColor;
+    if (heroThemeColor !== undefined) item.heroThemeColor = heroThemeColor;
     item.day = day ?? item.day;
     item.month = month ?? item.month;
     item.location = location ?? item.location;
@@ -466,14 +468,74 @@ async function loadPayments(id, kind = 'conference', cohortId = null) {
 
 function paymentStats(payments) {
   const paid = payments.filter(p => p.status === 'paid');
+  const pending = payments.filter(p => p.status === 'pending');
+  const failed = payments.filter(p => p.status === 'failed');
   const revenuePaise = paid.reduce((sum, p) => sum + (p.amount || 0), 0);
+
+  // Group by currency (USD, EUR, GBP only)
+  const defaultCurrencies = ['USD', 'EUR', 'GBP'];
+  const currencyMap = {};
+
+  defaultCurrencies.forEach(cur => {
+    currencyMap[cur] = {
+      currency: cur,
+      totalCount: 0,
+      paidCount: 0,
+      pendingCount: 0,
+      failedCount: 0,
+      totalAmount: 0,
+      paidAmount: 0,
+      pendingAmount: 0,
+      failedAmount: 0,
+    };
+  });
+
+  payments.forEach(p => {
+    let cur = (p.originalCurrency || p.currency || 'USD').toUpperCase();
+    if (cur === 'INR') cur = 'USD'; // Normalize any legacy INR to USD
+    if (!currencyMap[cur]) {
+      currencyMap[cur] = {
+        currency: cur,
+        totalCount: 0,
+        paidCount: 0,
+        pendingCount: 0,
+        failedCount: 0,
+        totalAmount: 0,
+        paidAmount: 0,
+        pendingAmount: 0,
+        failedAmount: 0,
+      };
+    }
+
+    const amtInSubunit = p.amount != null ? p.amount : (p.originalAmount != null ? p.originalAmount : 0);
+    const amt = amtInSubunit / 100;
+
+    currencyMap[cur].totalCount += 1;
+    currencyMap[cur].totalAmount += amt;
+
+    if (p.status === 'paid') {
+      currencyMap[cur].paidCount += 1;
+      currencyMap[cur].paidAmount += amt;
+    } else if (p.status === 'pending') {
+      currencyMap[cur].pendingCount += 1;
+      currencyMap[cur].pendingAmount += amt;
+    } else if (p.status === 'failed') {
+      currencyMap[cur].failedCount += 1;
+      currencyMap[cur].failedAmount += amt;
+    }
+  });
+
+  // Only return default supported currencies (USD, EUR, GBP) plus any valid international ones
+  const byCurrency = Object.values(currencyMap).filter(c => c.currency !== 'INR');
+
   return {
     totalPayments: payments.length,
     paidCount: paid.length,
-    pendingCount: payments.filter(p => p.status === 'pending').length,
-    failedCount: payments.filter(p => p.status === 'failed').length,
+    pendingCount: pending.length,
+    failedCount: failed.length,
     revenuePaise,
     revenue: (revenuePaise / 100).toFixed(2),
+    byCurrency,
   };
 }
 

@@ -158,11 +158,11 @@ function buildOrganizingCommittee(eventIndex) {
 // CONFERENCES (5)
 // ---------------------------------------------------------------------------
 const conferenceDefs = [
-  { title: 'International Conference on Medical, Life & Health Sciences', slug: 'icmlhs', location: 'Boston, Massachusetts · Hybrid', day: '12–14', month: 'MAR 27', offset: 200, startH: 9, endH: '17:30', contact: 'Dr. Sarah Chen', trackCount: 16, speakerCount: 8 },
-  { title: 'Global Forum on Research Translation', slug: 'global-forum', location: 'Copenhagen · Hybrid', day: '18–20', month: 'NOV 27', offset: 400, startH: 9, endH: '17:00', contact: 'Dr. Leila Morgan', trackCount: 12, speakerCount: 7 },
-  { title: 'Next-Gen Bioinformatics & Genomics Congress', slug: 'bioinformatics', location: 'San Francisco, California · In person', day: '15–17', month: 'JUN 27', offset: 290, startH: 9, endH: '17:00', contact: 'Dr. Alex Wong', trackCount: 14, speakerCount: 8 },
-  { title: 'Cardiovascular Medicine & Digital Therapeutics Summit', slug: 'cardiovascular-digital', location: 'Tokyo, Japan · In person', day: '02–03', month: 'OCT 27', offset: 350, startH: 9, endH: '17:30', contact: 'Dr. Kenji Tanaka', trackCount: 10, speakerCount: 6 },
-  { title: 'Applied Intelligence & Emerging Technologies Forum', slug: 'applied-intelligence', location: 'Singapore · In person', day: '08–09', month: 'MAY 27', offset: 260, startH: 9, endH: '18:00', contact: 'Prof. Daniel Okafor', trackCount: 12, speakerCount: 7 },
+  { title: 'International Conference on Medical, Life & Health Sciences', slug: 'icmlhs', location: '', day: '12–14', month: 'MAR 27', offset: 200, startH: 9, endH: '17:30', contact: 'Dr. Sarah Chen', trackCount: 16, speakerCount: 8 },
+  { title: 'Global Forum on Research Translation', slug: 'global-forum', location: '', day: '18–20', month: 'NOV 27', offset: 400, startH: 9, endH: '17:00', contact: 'Dr. Leila Morgan', trackCount: 12, speakerCount: 7 },
+  { title: 'Next-Gen Bioinformatics & Genomics Congress', slug: 'bioinformatics', location: '', day: '15–17', month: 'JUN 27', offset: 290, startH: 9, endH: '17:00', contact: 'Dr. Alex Wong', trackCount: 14, speakerCount: 8 },
+  { title: 'Cardiovascular Medicine & Digital Therapeutics Summit', slug: 'cardiovascular-digital', location: '', day: '02–03', month: 'OCT 27', offset: 350, startH: 9, endH: '17:30', contact: 'Dr. Kenji Tanaka', trackCount: 10, speakerCount: 6 },
+  { title: 'Applied Intelligence & Emerging Technologies Forum', slug: 'applied-intelligence', location: '', day: '08–09', month: 'MAY 27', offset: 260, startH: 9, endH: '18:00', contact: 'Prof. Daniel Okafor', trackCount: 12, speakerCount: 7 },
 ];
 
 // ---------------------------------------------------------------------------

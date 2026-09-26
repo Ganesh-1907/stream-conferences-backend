@@ -84,6 +84,7 @@ const conferenceSchema = new mongoose.Schema({
   description: { type: String },
   theme: { type: String, default: '' },
   themeColor: { type: String, default: '' },
+  heroThemeColor: { type: String, default: '' },
   day: { type: String, default: '' },
   month: { type: String, default: '' },
   location: { type: String, default: '' },
