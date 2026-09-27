@@ -10,6 +10,11 @@ const registrationSchema = new mongoose.Schema({
   address: { type: String },
   country: { type: String, required: true },
   category: { type: String, required: true },
+  accommodation: { type: String, default: '' },
+  accommodationFee: { type: Number, default: 0 },
+  registrationFee: { type: Number, default: 0 },
+  totalAmount: { type: Number, default: 0 },
+  currency: { type: String, default: 'USD' },
   presentingAbstract: { type: String, default: 'no' },
   billingInfo: {
     title: { type: String },

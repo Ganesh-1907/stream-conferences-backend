@@ -46,7 +46,11 @@ export async function listOrders(req, res) {
 }
 
 export async function createOrder(req, res) {
-  const { title, fullName, name, email, phone, address, country, category, amount, currency, registrationId, eventId, eventType, eventTitle, eventSlug, cohortId } = req.body;
+  const {
+    title, fullName, name, email, phone, address, country, category,
+    accommodation, accommodationFee, registrationFee,
+    amount, currency, registrationId, eventId, eventType, eventTitle, eventSlug, cohortId
+  } = req.body;
   try {
     const finalFullName = fullName || name;
     if (!finalFullName || !email || !category) {
@@ -74,7 +78,7 @@ export async function createOrder(req, res) {
         amount: amountInSubunit,
         currency: orderCurrency,
         orderId,
-        description: `${eventTitle || 'Event registration'} — ${category}`,
+        description: `${eventTitle || 'Event registration'} — ${category}${accommodation ? ` (${accommodation})` : ''}`,
         receiptEmail: email,
         customerName: displayName,
         customerAddress: address || undefined,
@@ -104,6 +108,9 @@ export async function createOrder(req, res) {
       address,
       country: country || null,
       category,
+      accommodation: accommodation || '',
+      accommodationFee: Number(accommodationFee) ? Math.round(Number(accommodationFee) * 100) : 0,
+      registrationFee: Number(registrationFee) ? Math.round(Number(registrationFee) * 100) : 0,
       amount: amountInSubunit,
       currency: (created.currency || orderCurrency).toUpperCase(),
       originalCurrency: orderCurrency,

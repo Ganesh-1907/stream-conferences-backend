@@ -213,7 +213,7 @@ export async function createConference(req, res) {
   const { username } = getUserContext(req);
   const {
     title, description, theme, themeColor, heroThemeColor, day, month, location, eventDate, startDate, endDate, slug,
-    startTime, endTime, brochureUrl, bannerUrl, logoUrl, headerBanners, fees, tracks, organizerContact,
+    startTime, endTime, brochureUrl, bannerUrl, logoUrl, headerBanners, fees, accommodationFees, tracks, organizerContact,
     subdomain, venue, assignedMentor, venueAddress, venueMapUrl,
     itinerary, speakers, program, faqs, sponsors, exhibitors, guidelines, scientificProgramUrl, termsAndConditions, venueDetails,
     organizingCommittee, partners, mediaPartners, welcomeBannerTitle, welcomeBannerDescription, socialLinks,
@@ -265,6 +265,7 @@ export async function createConference(req, res) {
       subjectImageUrl: subjectImageUrl || '',
       headerBanners: Array.isArray(headerBanners) ? headerBanners : [],
       fees: Array.isArray(fees) ? fees : [],
+      accommodationFees: Array.isArray(accommodationFees) ? accommodationFees : [],
       tracks: Array.isArray(tracks) ? tracks : [],
       organizerContact: organizerContact || {},
       socialLinks: socialLinks || {},
@@ -305,7 +306,7 @@ export async function updateConference(req, res) {
   const { id } = req.params;
   const {
     title, description, theme, themeColor, heroThemeColor, day, month, location, eventDate, startDate, endDate, slug,
-    startTime, endTime, brochureUrl, bannerUrl, logoUrl, subjectImageUrl, headerBanners, fees, tracks, organizerContact,
+    startTime, endTime, brochureUrl, bannerUrl, logoUrl, subjectImageUrl, headerBanners, fees, accommodationFees, tracks, organizerContact,
     subdomain, venue, assignedMentor, venueAddress, venueMapUrl,
     itinerary, speakers, program, faqs, sponsors, exhibitors, guidelines, scientificProgramUrl, termsAndConditions, venueDetails,
     organizingCommittee, partners, mediaPartners, welcomeBannerTitle, welcomeBannerDescription, socialLinks,
@@ -361,6 +362,7 @@ export async function updateConference(req, res) {
     if (subjectImageUrl !== undefined) item.subjectImageUrl = subjectImageUrl;
     if (headerBanners !== undefined) item.headerBanners = Array.isArray(headerBanners) ? headerBanners : [];
     if (fees !== undefined) { item.fees = Array.isArray(fees) ? fees : []; item.markModified('fees'); }
+    if (accommodationFees !== undefined) { item.accommodationFees = Array.isArray(accommodationFees) ? accommodationFees : []; item.markModified('accommodationFees'); }
     if (tracks !== undefined) item.tracks = Array.isArray(tracks) ? tracks : [];
     if (organizerContact !== undefined) { item.organizerContact = organizerContact; item.markModified('organizerContact'); }
     if (socialLinks !== undefined) { item.socialLinks = socialLinks; item.markModified('socialLinks'); }

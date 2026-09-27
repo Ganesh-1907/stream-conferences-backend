@@ -104,6 +104,7 @@ const conferenceSchema = new mongoose.Schema({
   subjectImageUrl: { type: String, default: '' },
   headerBanners: { type: [String], default: [] },
   fees: { type: mongoose.Schema.Types.Mixed, default: [] },
+  accommodationFees: { type: mongoose.Schema.Types.Mixed, default: [] },
   tracks: { type: [trackSchema], default: [] },
   organizerContact: {
     name: { type: String },
