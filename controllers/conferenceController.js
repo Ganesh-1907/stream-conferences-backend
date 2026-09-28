@@ -304,6 +304,12 @@ export async function createConference(req, res) {
 export async function updateConference(req, res) {
   const { role, username } = getUserContext(req);
   const { id } = req.params;
+  let body = req.body || {};
+  if (role === 'mentor') {
+    // Mentors may not change title, subdomain, start/end dates, or venue.
+    const { title: _t, subdomain: _sd, startDate: _sD, endDate: _eD, eventDate: _eDt, venue: _v, venueAddress: _vA, venueMapUrl: _vM, location: _loc, ...mentorBody } = body;
+    body = mentorBody;
+  }
   const {
     title, description, theme, themeColor, heroThemeColor, day, month, location, eventDate, startDate, endDate, slug,
     startTime, endTime, brochureUrl, bannerUrl, logoUrl, subjectImageUrl, headerBanners, fees, accommodationFees, tracks, organizerContact,
@@ -311,7 +317,7 @@ export async function updateConference(req, res) {
     itinerary, speakers, program, faqs, sponsors, exhibitors, guidelines, scientificProgramUrl, termsAndConditions, venueDetails,
     organizingCommittee, partners, mediaPartners, welcomeBannerTitle, welcomeBannerDescription, socialLinks,
     gtmCode, gaCode, mcCode, metaTitle, metaDescription
-  } = req.body;
+  } = body;
   try {
     const item = await Conference.findById(id);
     if (!item) {
@@ -319,6 +325,20 @@ export async function updateConference(req, res) {
     }
     if (role === 'mentor' && !canAccess(item, username)) {
       return res.status(403).json({ error: 'Forbidden: Cannot edit another user\'s conference' });
+    }
+    // Keep venue identity + dates locked for mentors even inside venueDetails payload.
+    let effectiveVenueDetails = venueDetails;
+    if (role === 'mentor' && venueDetails && typeof venueDetails === 'object') {
+      const existing = item.venueDetails || {};
+      effectiveVenueDetails = {
+        ...venueDetails,
+        startDate: existing.startDate,
+        endDate: existing.endDate,
+        name: existing.name,
+        venueId: existing.venueId,
+        address: existing.address,
+        locationUrl: existing.locationUrl,
+      };
     }
 
     item.title = title ?? item.title;
@@ -392,7 +412,7 @@ export async function updateConference(req, res) {
     if (guidelines !== undefined) item.guidelines = guidelines || '';
     if (scientificProgramUrl !== undefined) item.scientificProgramUrl = scientificProgramUrl || '';
     if (termsAndConditions !== undefined) item.termsAndConditions = termsAndConditions || '';
-    if (venueDetails !== undefined) item.venueDetails = venueDetails || {};
+    if (effectiveVenueDetails !== undefined) item.venueDetails = effectiveVenueDetails || {};
     if (organizingCommittee !== undefined) item.organizingCommittee = Array.isArray(organizingCommittee) ? organizingCommittee : [];
 
     await item.save();
