@@ -213,7 +213,7 @@ export async function createConference(req, res) {
   const { username } = getUserContext(req);
   const {
     title, description, theme, themeColor, heroThemeColor, day, month, location, eventDate, startDate, endDate, slug,
-    startTime, endTime, brochureUrl, bannerUrl, logoUrl, headerBanners, fees, accommodationFees, tracks, organizerContact,
+    startTime, endTime, brochureUrl, bannerUrl, logoUrl, subjectImageUrl, headerBanners, fees, accommodationFees, tracks, organizerContact,
     subdomain, venue, assignedMentor, venueAddress, venueMapUrl,
     itinerary, speakers, program, faqs, sponsors, exhibitors, guidelines, scientificProgramUrl, termsAndConditions, venueDetails,
     organizingCommittee, partners, mediaPartners, welcomeBannerTitle, welcomeBannerDescription, socialLinks,
