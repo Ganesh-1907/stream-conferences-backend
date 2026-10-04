@@ -22,6 +22,7 @@ router.get('/all', async (req, res) => {
             logo: '$sponsors.logo',
             order: '$sponsors.order',
             eventTitle: '$title',
+            shortTitle: '$shortTitle',
             eventType: { $literal: 'conference' },
             createdAt: '$createdAt',
           },

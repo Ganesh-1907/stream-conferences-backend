@@ -13,6 +13,8 @@ const contactSchema = new mongoose.Schema({
   eventSlug: { type: String },
   cohortId: { type: String },
   message: { type: String, required: true },
+  status: { type: String, enum: ['open', 'closed'], default: 'open' },
+  closedAt: { type: Date, default: null },
   createdAt: { type: Date, default: Date.now }
 });
 

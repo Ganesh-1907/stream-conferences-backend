@@ -17,6 +17,9 @@ export async function getEventBySubdomain(req, res) {
     if (!event) {
       return res.status(404).json({ error: 'Event not found' });
     }
+    if (event.visibility === 'private') {
+      return res.status(404).json({ error: 'Event not found' });
+    }
 
     const courseType = normalized.eventType;
     const cohorts = await listCohorts(courseType, normalized.eventId);

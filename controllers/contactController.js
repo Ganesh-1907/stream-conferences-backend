@@ -15,16 +15,38 @@ async function resolveEvent(eventId, eventType, eventSlug) {
 }
 
 export async function listContacts(req, res) {
-  const { eventId, eventType, cohortId } = req.query;
+  const { eventId, eventType, cohortId, status, scope } = req.query;
   try {
     const query = {};
     if (eventId) query.eventId = eventId;
     if (eventType) query.eventType = eventType;
     if (cohortId) query.cohortId = cohortId;
+    if (status === 'open' || status === 'closed') query.status = status;
+    if (scope === 'global') query.eventId = null;
     const list = await Contact.find(query).sort({ createdAt: -1 });
     res.json(list);
   } catch (error) {
     console.error('Fetch contacts error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+export async function updateContactStatus(req, res) {
+  const { id } = req.params;
+  const { status } = req.body;
+  if (status !== 'open' && status !== 'closed') {
+    return res.status(400).json({ error: "Status must be 'open' or 'closed'" });
+  }
+  try {
+    const item = await Contact.findByIdAndUpdate(
+      id,
+      { status, closedAt: status === 'closed' ? new Date() : null },
+      { new: true }
+    );
+    if (!item) return res.status(404).json({ error: 'Contact not found' });
+    res.json(item);
+  } catch (error) {
+    console.error('Update contact status error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 }

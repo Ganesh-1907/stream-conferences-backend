@@ -60,7 +60,7 @@ export async function listConferences(req, res) {
 
       if (!allParentIds.length) return res.json([]);
 
-      const parents = await Conference.find({ _id: { $in: allParentIds } }).lean();
+      const parents = await Conference.find({ _id: { $in: allParentIds } }).sort({ createdAt: -1, _id: -1 }).lean();
       const parentMap = new Map(parents.map(p => [p._id.toString(), p]));
       const cohortByParent = new Map();
       for (const c of cohortAssignments) {
@@ -161,17 +161,24 @@ export async function listConferences(req, res) {
       return;
     }
 
-    const query = {};
+    // Requests without a role/username context come from the public user website.
+    // Only public conferences are listed there; private ones stay admin/mentor only.
+    const isVisitor = !role && !username;
+    const query = isVisitor ? { visibility: { $ne: 'private' } } : {};
+    const sortQuery = isVisitor ? { eventDate: 1 } : { createdAt: -1, _id: -1 };
     const projection = isSummary
-      ? '_id title theme day month eventDate location announcedBy assignedMentor subdomain slug eventId venue'
+      ? '_id title theme shortTitle visibility day month eventDate location announcedBy assignedMentor subdomain slug eventId venue'
       : '';
-    const list = await Conference.find(query).sort({ eventDate: 1 }).select(projection);
+    const list = await Conference.find(query).sort(sortQuery).select(projection);
     if (isSummary) {
       const mentorNames = await mentorUsernameToNameMap(list.map(c => c.assignedMentor));
       res.json(list.map(c => {
         const obj = c.toJSON();
         return {
-          _id: obj._id, title: obj.title, theme: obj.theme, day: obj.day, month: obj.month,
+          _id: obj._id, title: obj.title, theme: obj.theme,
+          shortTitle: obj.shortTitle || '',
+          visibility: obj.visibility === 'private' ? 'private' : 'public',
+          day: obj.day, month: obj.month,
           eventDate: obj.eventDate, date: obj.date, location: obj.location,
           announcedBy: obj.announcedBy, assignedMentor: obj.assignedMentor,
           mentorName: obj.assignedMentor ? mentorNames.get(obj.assignedMentor) || obj.assignedMentor : null,
@@ -217,7 +224,7 @@ export async function createConference(req, res) {
     subdomain, venue, assignedMentor, venueAddress, venueMapUrl,
     itinerary, speakers, program, faqs, sponsors, exhibitors, guidelines, scientificProgramUrl, termsAndConditions, venueDetails,
     organizingCommittee, partners, mediaPartners, welcomeBannerTitle, welcomeBannerDescription, socialLinks,
-    gtmCode, gaCode, mcCode, metaTitle, metaDescription
+    gtmCode, gaCode, mcCode, metaTitle, metaDescription, shortTitle, visibility
   } = req.body;
   try {
     if (!title) {
@@ -241,6 +248,8 @@ export async function createConference(req, res) {
 
     const item = await Conference.create({
       title,
+      shortTitle: shortTitle || '',
+      visibility: visibility === 'private' ? 'private' : 'public',
       description: description || '',
       theme: theme || '',
       themeColor: themeColor || '',
@@ -307,7 +316,7 @@ export async function updateConference(req, res) {
   let body = req.body || {};
   if (role === 'mentor') {
     // Mentors may not change title, subdomain, start/end dates, or venue.
-    const { title: _t, subdomain: _sd, startDate: _sD, endDate: _eD, eventDate: _eDt, venue: _v, venueAddress: _vA, venueMapUrl: _vM, location: _loc, ...mentorBody } = body;
+    const { title: _t, subdomain: _sd, startDate: _sD, endDate: _eD, eventDate: _eDt, venue: _v, venueAddress: _vA, venueMapUrl: _vM, location: _loc, visibility: _vis, ...mentorBody } = body;
     body = mentorBody;
   }
   const {
@@ -316,7 +325,7 @@ export async function updateConference(req, res) {
     subdomain, venue, assignedMentor, venueAddress, venueMapUrl,
     itinerary, speakers, program, faqs, sponsors, exhibitors, guidelines, scientificProgramUrl, termsAndConditions, venueDetails,
     organizingCommittee, partners, mediaPartners, welcomeBannerTitle, welcomeBannerDescription, socialLinks,
-    gtmCode, gaCode, mcCode, metaTitle, metaDescription
+    gtmCode, gaCode, mcCode, metaTitle, metaDescription, shortTitle, visibility
   } = body;
   try {
     const item = await Conference.findById(id);
@@ -342,6 +351,8 @@ export async function updateConference(req, res) {
     }
 
     item.title = title ?? item.title;
+    if (shortTitle !== undefined) item.shortTitle = shortTitle ?? '';
+    if (visibility !== undefined) item.visibility = visibility === 'private' ? 'private' : 'public';
     item.description = description ?? item.description;
     item.theme = theme ?? item.theme;
     if (themeColor !== undefined) item.themeColor = themeColor;
@@ -412,8 +423,14 @@ export async function updateConference(req, res) {
     if (guidelines !== undefined) item.guidelines = guidelines || '';
     if (scientificProgramUrl !== undefined) item.scientificProgramUrl = scientificProgramUrl || '';
     if (termsAndConditions !== undefined) item.termsAndConditions = termsAndConditions || '';
-    if (effectiveVenueDetails !== undefined) item.venueDetails = effectiveVenueDetails || {};
-    if (organizingCommittee !== undefined) item.organizingCommittee = Array.isArray(organizingCommittee) ? organizingCommittee : [];
+    if (effectiveVenueDetails !== undefined) {
+      item.venueDetails = effectiveVenueDetails || {};
+      item.markModified('venueDetails');
+    }
+    if (organizingCommittee !== undefined) {
+      item.organizingCommittee = Array.isArray(organizingCommittee) ? organizingCommittee : [];
+      item.markModified('organizingCommittee');
+    }
 
     await item.save();
     res.json(formatConference(item));

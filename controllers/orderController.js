@@ -18,6 +18,7 @@ import {
 const CATEGORY_PRICING = {
   'Student': 24500,
   'Academic': 39500,
+  'Industry Participant': 52000,
   'Industry Delegate': 52000,
   'Virtual Attendee': 14500
 };

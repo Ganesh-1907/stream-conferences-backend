@@ -203,7 +203,10 @@ export async function updateCohort(req, res) {
     if (startDate !== undefined) cohort.startDate = parseDate(startDate);
     if (endDate !== undefined) cohort.endDate = parseDate(endDate);
     if (status !== undefined) cohort.status = status;
-    if (content !== undefined) cohort.content = content || {};
+    if (content !== undefined) {
+      cohort.content = content || {};
+      cohort.markModified('content');
+    }
     if (subdomain !== undefined) {
       let resolved = subdomain ? sanitizeSubdomain(subdomain) : null;
       if (resolved) {

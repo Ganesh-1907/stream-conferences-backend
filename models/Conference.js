@@ -61,6 +61,12 @@ const faqSchema = new mongoose.Schema({
   order: { type: Number, default: 0 }
 });
 
+const cityAttractionSchema = new mongoose.Schema({
+  name: { type: String, default: '' },
+  image: { type: String, default: '' },
+  link: { type: String, default: '' }
+}, { _id: false });
+
 const organizingCommitteeMemberSchema = new mongoose.Schema({
   name: { type: String, default: '' },
   image: { type: String, default: '' },
@@ -80,6 +86,8 @@ const partnerSchema = new mongoose.Schema({
 
 const conferenceSchema = new mongoose.Schema({
   title: { type: String, required: true },
+  shortTitle: { type: String, default: '' },
+  visibility: { type: String, enum: ['public', 'private'], default: 'public' },
   slug: { type: String, required: true, unique: true },
   description: { type: String },
   theme: { type: String, default: '' },
@@ -151,6 +159,7 @@ const conferenceSchema = new mongoose.Schema({
     mainImage: { type: String, default: '' },
     subImages: { type: [String], default: [] },
     cityHighlights: { type: [String], default: [] },
+    cityAttractions: { type: [cityAttractionSchema], default: [] },
     description: { type: String },
     images: { type: [String], default: [] },
     moreInfo: { type: String }

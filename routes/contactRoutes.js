@@ -1,10 +1,11 @@
 import { Router } from 'express';
-import { listContacts, sendContact } from '../controllers/contactController.js';
-import { requireAdmin } from '../middleware/auth.js';
+import { listContacts, sendContact, updateContactStatus } from '../controllers/contactController.js';
+import { requireAdmin, requireUser } from '../middleware/auth.js';
 
 const router = Router();
 
 router.get('/', requireAdmin, listContacts);
+router.put('/:id/status', requireUser, updateContactStatus);
 router.post('/send', sendContact);
 
 export default router;
