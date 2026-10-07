@@ -164,7 +164,7 @@ export async function listConferences(req, res) {
     // Requests without a role/username context come from the public user website.
     // Only public conferences are listed there; private ones stay admin/mentor only.
     const isVisitor = !role && !username;
-    const query = isVisitor ? { visibility: { $ne: 'private' } } : {};
+    const query = isVisitor ? { visibility: 'public' } : {};
     const sortQuery = isVisitor ? { eventDate: 1 } : { createdAt: -1, _id: -1 };
     const projection = isSummary
       ? '_id title theme shortTitle visibility day month eventDate location announcedBy assignedMentor subdomain slug eventId venue'
@@ -177,7 +177,7 @@ export async function listConferences(req, res) {
         return {
           _id: obj._id, title: obj.title, theme: obj.theme,
           shortTitle: obj.shortTitle || '',
-          visibility: obj.visibility === 'private' ? 'private' : 'public',
+          visibility: obj.visibility === 'public' ? 'public' : 'private',
           day: obj.day, month: obj.month,
           eventDate: obj.eventDate, date: obj.date, location: obj.location,
           announcedBy: obj.announcedBy, assignedMentor: obj.assignedMentor,
@@ -249,7 +249,7 @@ export async function createConference(req, res) {
     const item = await Conference.create({
       title,
       shortTitle: shortTitle || '',
-      visibility: visibility === 'private' ? 'private' : 'public',
+      visibility: visibility === 'public' ? 'public' : 'private',
       description: description || '',
       theme: theme || '',
       themeColor: themeColor || '',
@@ -352,7 +352,7 @@ export async function updateConference(req, res) {
 
     item.title = title ?? item.title;
     if (shortTitle !== undefined) item.shortTitle = shortTitle ?? '';
-    if (visibility !== undefined) item.visibility = visibility === 'private' ? 'private' : 'public';
+    if (visibility !== undefined) item.visibility = visibility === 'public' ? 'public' : 'private';
     item.description = description ?? item.description;
     item.theme = theme ?? item.theme;
     if (themeColor !== undefined) item.themeColor = themeColor;

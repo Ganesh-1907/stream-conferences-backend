@@ -17,7 +17,7 @@ export async function getEventBySubdomain(req, res) {
     if (!event) {
       return res.status(404).json({ error: 'Event not found' });
     }
-    if (event.visibility === 'private') {
+    if (event.visibility !== 'public') {
       return res.status(404).json({ error: 'Event not found' });
     }
 

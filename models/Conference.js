@@ -87,7 +87,7 @@ const partnerSchema = new mongoose.Schema({
 const conferenceSchema = new mongoose.Schema({
   title: { type: String, required: true },
   shortTitle: { type: String, default: '' },
-  visibility: { type: String, enum: ['public', 'private'], default: 'public' },
+  visibility: { type: String, enum: ['public', 'private'], default: 'private' },
   slug: { type: String, required: true, unique: true },
   description: { type: String },
   theme: { type: String, default: '' },
