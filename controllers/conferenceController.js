@@ -4,6 +4,8 @@ import { Registration } from '../models/Registration.js';
 import { Order } from '../models/Order.js';
 import { Abstract } from '../models/Abstract.js';
 import { Contact } from '../models/Contact.js';
+import { ChatSession } from '../models/ChatSession.js';
+import { ChatMessage } from '../models/ChatMessage.js';
 import { MentorProfile } from '../models/MentorProfile.js';
 import { getUserContext } from '../middleware/auth.js';
 import { generateSlug, sanitizeSubdomain, generateSubdomain } from '../services/slug.js';
@@ -300,8 +302,12 @@ export async function createConference(req, res) {
       metaDescription: metaDescription || '',
       announcedBy: username
     });
-    const cohort = await ensureInitialCohort('conference', item);
-    if (cohort) item.currentCohortId = cohort._id;
+    try {
+      const cohort = await ensureInitialCohort('conference', item);
+      if (cohort) item.currentCohortId = cohort._id;
+    } catch (cohortError) {
+      console.error('Initial cohort creation failed for conference', item.eventId, cohortError);
+    }
     provisionSsl(resolvedSubdomain);
     res.status(201).json(formatConference(item));
   } catch (error) {
@@ -478,6 +484,19 @@ export async function deleteConference(req, res) {
     await Order.deleteMany({ eventId: { $in: [id, item.eventId] } });
     await Abstract.deleteMany({ eventId: { $in: [id, item.eventId] } });
     await Contact.deleteMany({ eventId: { $in: [id, item.eventId] } });
+    // Chat records store the conference id as a string - drop them too so the
+    // admin chat list does not keep sessions pointing at a deleted conference.
+    const chatKeys = [String(id), item.eventId].filter(Boolean);
+    const orphanSessions = await ChatSession.find({
+      $or: [{ conferenceId: { $in: chatKeys } }, { eventId: { $in: chatKeys } }],
+    }).select('_id');
+    if (orphanSessions.length) {
+      const sessionIds = orphanSessions.map((s) => s._id);
+      await ChatMessage.deleteMany({
+        $or: [{ sessionId: { $in: sessionIds } }, { conferenceId: { $in: chatKeys } }],
+      });
+      await ChatSession.deleteMany({ _id: { $in: sessionIds } });
+    }
     res.json({ success: true });
   } catch (error) {
     console.error('Delete conference error:', error);

@@ -143,19 +143,49 @@ export async function ensureInitialCohort(courseType, course) {
   const year = (startDate ? new Date(startDate) : new Date()).getFullYear();
 
   const cohortId = await buildCohortId(courseType, course._id, 1);
-  const cohort = await CourseCohort.create({
-    courseType,
-    courseId: course._id,
-    cohortId,
-    year,
-    batchNo: 1,
-    startDate: startDate || null,
-    endDate: endDate || null,
-    status: deriveStatus(startDate, endDate),
-    isCurrent: true,
-    assignedMentor: course.assignedMentor || null,
-    content: {},
-  });
+  let cohort;
+  try {
+    cohort = await CourseCohort.create({
+      courseType,
+      courseId: course._id,
+      cohortId,
+      year,
+      batchNo: 1,
+      startDate: startDate || null,
+      endDate: endDate || null,
+      status: deriveStatus(startDate, endDate),
+      isCurrent: true,
+      assignedMentor: course.assignedMentor || null,
+      content: {},
+    });
+  } catch (error) {
+    // The generated cohortId was already taken, normally by a leftover cohort
+    // whose parent course was deleted by code that did not cascade. Reuse that
+    // orphan instead of failing the whole request.
+    if (!error || error.code !== 11000 || !cohortId) throw error;
+    const Model = COURSE_MODEL[courseType];
+    const taken = await CourseCohort.findOne({ cohortId });
+    const parentExists = taken && taken.courseId && Model
+      ? Boolean(await Model.findById(taken.courseId).select('_id').lean())
+      : false;
+    if (!taken || parentExists) {
+      const fallback = await CourseCohort.findOne({ courseType, courseId: course._id });
+      if (fallback) return fallback;
+      throw error;
+    }
+    taken.courseType = courseType;
+    taken.courseId = course._id;
+    taken.year = year;
+    taken.batchNo = 1;
+    taken.title = taken.title || '';
+    taken.startDate = startDate || null;
+    taken.endDate = endDate || null;
+    taken.status = deriveStatus(startDate, endDate);
+    taken.isCurrent = true;
+    taken.assignedMentor = course.assignedMentor || taken.assignedMentor || null;
+    await taken.save();
+    cohort = taken;
+  }
 
   const Model = COURSE_MODEL[courseType];
   if (Model) {

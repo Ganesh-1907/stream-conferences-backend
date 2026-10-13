@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import { User } from './models/User.js';
 import { Conference } from './models/Conference.js';
+import { CourseCohort } from './models/CourseCohort.js';
 import { generateSlug, sanitizeSubdomain } from './services/slug.js';
 import { ensureInitialCohort } from './services/cohortService.js';
 
@@ -70,17 +71,56 @@ async function migrateEventSites() {
 }
 
 // Backfill an initial cohort (Year = course year, Batch = 1) for every course that has none.
+// Also repairs data left behind by deletions that did not cascade:
+//  - cohorts whose parent conference no longer exists (orphans)
+//  - conferences whose currentCohortId points at a deleted cohort
 async function migrateCourseCohorts() {
   try {
-    let conferenceCount = 0;
-    const conferences = await Conference.find({ currentCohortId: null });
-    for (const c of conferences) {
-      await ensureInitialCohort('conference', c);
-      conferenceCount += 1;
+    const conferences = await Conference.find();
+    const liveIds = new Set(conferences.map((c) => String(c._id)));
+
+    let removedOrphans = 0;
+    const allCohorts = await CourseCohort.find({ courseType: 'conference' });
+    for (const cohort of allCohorts) {
+      if (!liveIds.has(String(cohort.courseId))) {
+        await cohort.deleteOne();
+        removedOrphans += 1;
+      }
+    }
+    if (removedOrphans) {
+      console.log(`[Database] Removed ${removedOrphans} orphan cohort(s) with no parent conference`);
     }
 
-    if (conferenceCount) {
-      console.log(`[Database] Backfilled initial cohort for ${conferenceCount} conference(s)`);
+    let repaired = 0;
+    for (const c of conferences) {
+      const cohorts = await CourseCohort.find({ courseType: 'conference', courseId: c._id }).lean();
+      if (!cohorts.length) {
+        if (c.currentCohortId) {
+          c.currentCohortId = null;
+          await c.save();
+        }
+        await ensureInitialCohort('conference', c);
+        repaired += 1;
+        continue;
+      }
+      const current = cohorts.find((ch) => ch.isCurrent) || cohorts[0];
+      if (String(c.currentCohortId || '') !== String(current._id)) {
+        c.currentCohortId = current._id;
+        await c.save();
+        repaired += 1;
+      }
+      const currentCount = cohorts.filter((ch) => ch.isCurrent).length;
+      if (currentCount > 1 || !current.isCurrent) {
+        await CourseCohort.updateMany(
+          { courseType: 'conference', courseId: c._id, _id: { $ne: current._id } },
+          { isCurrent: false }
+        );
+        await CourseCohort.findByIdAndUpdate(current._id, { isCurrent: true });
+      }
+    }
+
+    if (repaired) {
+      console.log(`[Database] Backfilled initial cohort for ${repaired} conference(s)`);
     }
   } catch (err) {
     console.error('[Database] course cohort migration failed:', err);

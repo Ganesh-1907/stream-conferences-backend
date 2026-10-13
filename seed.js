@@ -6,6 +6,8 @@ import { Blog } from './models/Blog.js';
 import { Abstract } from './models/Abstract.js';
 import { Registration } from './models/Registration.js';
 import { Order } from './models/Order.js';
+import { ChatSession } from './models/ChatSession.js';
+import { ChatMessage } from './models/ChatMessage.js';
 import { CourseCohort } from './models/CourseCohort.js';
 import { MentorProfile } from './models/MentorProfile.js';
 import { generateSlug } from './services/slug.js';
@@ -291,6 +293,13 @@ async function seed() {
     await Abstract.deleteMany({});
     await Registration.deleteMany({});
     await Order.deleteMany({});
+    // Conference-scoped chats belong to the conferences we just wiped; keeping
+    // them would leave sessions pointing at ids that no longer exist.
+    const staleChats = await ChatSession.find({ conferenceId: { $ne: null } }).select('_id');
+    if (staleChats.length) {
+      await ChatMessage.deleteMany({ sessionId: { $in: staleChats.map((s) => s._id) } });
+      await ChatSession.deleteMany({ _id: { $in: staleChats.map((s) => s._id) } });
+    }
     console.log('[Seed] Cleared prior data');
 
     // 4. Conferences
