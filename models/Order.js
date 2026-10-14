@@ -14,6 +14,7 @@ const orderSchema = new mongoose.Schema({
   category: { type: String, required: true },
   accommodation: { type: String, default: '' },
   accommodationFee: { type: Number, default: 0 },
+  addons: { type: mongoose.Schema.Types.Mixed, default: [] },
   registrationFee: { type: Number, default: 0 },
   amount: { type: Number, required: true },
   currency: { type: String, default: 'INR' },

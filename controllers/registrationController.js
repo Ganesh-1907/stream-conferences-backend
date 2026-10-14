@@ -37,7 +37,7 @@ export async function listRegistrations(req, res) {
 export async function registerParticipant(req, res) {
   const {
     title, fullName, name, email, phone, institution, address, country, category,
-    accommodation, accommodationFee, registrationFee, totalAmount, currency,
+    accommodation, addon, accommodationFee, addonFee, addons, registrationFee, totalAmount, currency,
     presentingAbstract, eventId, eventType, eventSlug, cohortId, billingInfo
   } = req.body;
   try {
@@ -58,6 +58,15 @@ export async function registerParticipant(req, res) {
 
     const displayName = title ? `${title} ${finalFullName}`.trim() : finalFullName;
 
+    const finalAddons = Array.isArray(addons) ? addons : [];
+    const finalAddonFee = finalAddons.length > 0
+      ? finalAddons.reduce((sum, a) => sum + (Number(a.fee ?? a.price) || 0), 0)
+      : (Number(accommodationFee !== undefined ? accommodationFee : addonFee) || 0);
+
+    const finalAddon = finalAddons.length > 0
+      ? finalAddons.map(a => `${a.title || a.name || 'Add-on'}: ${a.level || a.levelTitle || a.title}`).join(', ')
+      : (accommodation || addon || '');
+
     const item = await Registration.create({
       title,
       fullName: finalFullName,
@@ -68,8 +77,9 @@ export async function registerParticipant(req, res) {
       address,
       country,
       category,
-      accommodation: accommodation || '',
-      accommodationFee: Number(accommodationFee) || 0,
+      accommodation: finalAddon,
+      accommodationFee: finalAddonFee,
+      addons: finalAddons,
       registrationFee: Number(registrationFee) || 0,
       totalAmount: Number(totalAmount) || 0,
       currency: currency || 'USD',
@@ -123,6 +133,20 @@ export async function registerParticipant(req, res) {
       }
     }
 
+    let addonHtml = '';
+    if (finalAddons.length > 0) {
+      addonHtml = `<div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:14px 18px; margin:18px 0;">
+        <strong style="color:#0e7490;">Selected Add-ons:</strong>
+        <ul style="margin:8px 0 0 16px; padding:0; color:#334155;">
+          ${finalAddons.map(a => `<li>${a.title || a.name || 'Add-on'}: <strong>${a.level || a.levelTitle || a.title}</strong> (${currency || 'USD'} ${a.fee ?? a.price ?? 0})</li>`).join('')}
+        </ul>
+      </div>`;
+    } else if (finalAddon) {
+      addonHtml = `<div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:14px 18px; margin:18px 0;">
+        <strong style="color:#0e7490;">Selected Add-on:</strong> ${finalAddon} ${finalAddonFee ? `(${currency || 'USD'} ${finalAddonFee})` : ''}
+      </div>`;
+    }
+
     await sendMail({
       to: email,
       subject: `Registration received — ${event?.eventTitle || 'Stream Conferences'}`,
@@ -134,6 +158,7 @@ export async function registerParticipant(req, res) {
           <p>Hi ${name},</p>
           <p>We have received your registration for <strong>${event?.eventTitle || 'the event'}</strong> under the <strong>${category}</strong> category.</p>
           ${feeHtml}
+          ${addonHtml}
           ${link ? `<p style="margin:24px 0;"><a href="${link}" style="display:inline-block; background:#0e7490; color:#ffffff; text-decoration:none; padding:12px 24px; border-radius:6px; font-weight:bold;">Complete Payment</a></p>` : `<p>Your registration has been recorded. Our support team will contact you with further details.</p>`}
           <p style="color:#64748b; font-size:13px;">Your registration is confirmed once payment is completed. Keep this email for your records.</p>
         `,

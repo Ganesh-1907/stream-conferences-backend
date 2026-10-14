@@ -1,10 +1,10 @@
-// Build the public URL for an event, preferring its dedicated subdomain.
 export function eventUrl(event) {
   const subdomain = event?.subdomain;
   const root = process.env.ROOT_DOMAIN;
+  const batchSuffix = event?.batchNo ? `/b${event.batchNo}` : (event?.cohortBatchNo ? `/b${event.cohortBatchNo}` : '');
   if (subdomain && root) {
     const protocol = root === 'localhost' ? 'http' : 'https';
-    return `${protocol}://${subdomain}.${root}`;
+    return `${protocol}://${subdomain}.${root}${batchSuffix}`;
   }
   const base = process.env.REGISTRATION_BASE || 'http://localhost:5174/register';
   const ref = event?.eventId || event?.eventSlug || event?.eventCustomId || event?.slug || '';

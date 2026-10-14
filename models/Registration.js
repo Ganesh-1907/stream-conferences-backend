@@ -12,6 +12,7 @@ const registrationSchema = new mongoose.Schema({
   category: { type: String, required: true },
   accommodation: { type: String, default: '' },
   accommodationFee: { type: Number, default: 0 },
+  addons: { type: mongoose.Schema.Types.Mixed, default: [] },
   registrationFee: { type: Number, default: 0 },
   totalAmount: { type: Number, default: 0 },
   currency: { type: String, default: 'USD' },

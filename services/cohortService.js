@@ -12,6 +12,7 @@ const CONTENT_FIELDS = [
   'brochureUrl', 'bannerUrl', 'logoUrl', 'headerBanners', 'fees', 'tracks',
   'organizerContact', 'itinerary', 'speakers', 'program', 'faqs', 'sponsors', 'exhibitors',
   'partners', 'mediaPartners', 'guidelines', 'scientificProgramUrl', 'termsAndConditions', 'organizingCommittee', 'venueDetails',
+  'globalAddons', 'globalAddonTitle', 'accommodationFees',
 ];
 
 export function extractContent(doc) {

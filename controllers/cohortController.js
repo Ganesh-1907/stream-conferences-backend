@@ -118,7 +118,8 @@ export function createCohortForCourse(courseType) {
         'faqs', 'sponsors', 'exhibitors', 'partners', 'mediaPartners', 'guidelines',
         'scientificProgramUrl', 'termsAndConditions', 'organizingCommittee', 'venueDetails',
         'welcomeBannerTitle', 'welcomeBannerDescription', 'gtmCode', 'gaCode', 'mcCode',
-        'metaTitle', 'metaDescription'
+        'metaTitle', 'metaDescription',
+        'globalAddons', 'globalAddonTitle', 'accommodationFees'
       ];
       for (const k of CONTENT_KEYS) {
         if (req.body[k] !== undefined && extraContent[k] === undefined) {

@@ -49,7 +49,7 @@ export async function listOrders(req, res) {
 export async function createOrder(req, res) {
   const {
     title, fullName, name, email, phone, address, country, category,
-    accommodation, accommodationFee, registrationFee,
+    accommodation, addon, accommodationFee, addonFee, addons, registrationFee,
     amount, currency, registrationId, eventId, eventType, eventTitle, eventSlug, cohortId
   } = req.body;
   try {
@@ -57,6 +57,15 @@ export async function createOrder(req, res) {
     if (!finalFullName || !email || !category) {
       return res.status(400).json({ error: 'Missing required order fields (name, email, category)' });
     }
+
+    const finalAddons = Array.isArray(addons) ? addons : [];
+    const finalAddonFee = finalAddons.length > 0
+      ? finalAddons.reduce((sum, a) => sum + (Number(a.fee ?? a.price) || 0), 0)
+      : (Number(accommodationFee !== undefined ? accommodationFee : addonFee) || 0);
+
+    const finalAddon = finalAddons.length > 0
+      ? finalAddons.map(a => `${a.title || a.name || 'Add-on'}: ${a.level || a.levelTitle || a.title}`).join(', ')
+      : (accommodation || addon || '');
 
     const gateway =
       String(req.body.gateway || req.body.paymentGateway || 'razorpay').toLowerCase() === 'stripe'
@@ -79,7 +88,7 @@ export async function createOrder(req, res) {
         amount: amountInSubunit,
         currency: orderCurrency,
         orderId,
-        description: `${eventTitle || 'Event registration'} — ${category}${accommodation ? ` (${accommodation})` : ''}`,
+        description: `${eventTitle || 'Event registration'} — ${category}${finalAddon ? ` (${finalAddon})` : ''}`,
         receiptEmail: email,
         customerName: displayName,
         customerAddress: address || undefined,
@@ -109,8 +118,9 @@ export async function createOrder(req, res) {
       address,
       country: country || null,
       category,
-      accommodation: accommodation || '',
-      accommodationFee: Number(accommodationFee) ? Math.round(Number(accommodationFee) * 100) : 0,
+      accommodation: finalAddon,
+      accommodationFee: finalAddonFee ? Math.round(finalAddonFee * 100) : 0,
+      addons: finalAddons,
       registrationFee: Number(registrationFee) ? Math.round(Number(registrationFee) * 100) : 0,
       amount: amountInSubunit,
       currency: (created.currency || orderCurrency).toUpperCase(),
@@ -265,6 +275,7 @@ export async function verifyOrder(req, res) {
             <p>Your payment of <strong>${displayTotal}</strong> has been received for <strong>${order.eventTitle || 'the event'}</strong>.</p>
             <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:14px 18px; margin:18px 0; font-size:14px;">
               <div><strong style="color:#0e7490;">Category:</strong> ${order.category || '—'}</div>
+              ${order.accommodation ? `<div><strong style="color:#0e7490;">Add-ons:</strong> ${order.accommodation}</div>` : ''}
               <div><strong style="color:#0e7490;">Payment ID:</strong> ${finalPaymentId}</div>
               <div><strong style="color:#0e7490;">Order ID:</strong> ${orderId}</div>
             </div>

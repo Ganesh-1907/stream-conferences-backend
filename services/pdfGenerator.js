@@ -75,6 +75,7 @@ export function generateRegistrationPDF({ registration, order, event }) {
     doc.fill(TEXT).fontSize(13).font('Helvetica-Bold').text('Registration Details', 50, y);
     y += 22;
     doc.fontSize(10).font('Helvetica');
+    const addonText = registration?.accommodation || (Array.isArray(registration?.addons) && registration.addons.length > 0 ? registration.addons.map(a => `${a.title || a.name || 'Add-on'}: ${a.level || a.levelTitle || a.title}`).join(', ') : null);
     const regDetails = [
       ['Name', registration?.name || '—'],
       ['Email', registration?.email || '—'],
@@ -82,9 +83,10 @@ export function generateRegistrationPDF({ registration, order, event }) {
       ['Institution', registration?.institution || '—'],
       ['Country', registration?.country || '—'],
       ['Category', registration?.category || '—'],
+      addonText ? ['Add-ons', addonText] : null,
       ['Abstract', registration?.presentingAbstract || 'No'],
       ['Registered On', regDate],
-    ];
+    ].filter(Boolean);
     for (const [label, value] of regDetails) {
       doc.fill(MUTED).font('Helvetica-Bold').text(`${label}:`, 50, y, { width: 110 });
       doc.fill(TEXT).font('Helvetica').text(value, 165, y, { width: 330 });

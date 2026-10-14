@@ -37,8 +37,21 @@ async function uniqueSubdomain(base, Model) {
 
 function formatConference(doc) {
   const json = doc.toJSON ? doc.toJSON() : doc;
+  let formattedAddons = Array.isArray(json.globalAddons) ? json.globalAddons : [];
+  if (formattedAddons.length === 0 && Array.isArray(json.accommodationFees) && json.accommodationFees.length > 0) {
+    formattedAddons = [
+      {
+        id: 'addon_legacy_acc',
+        title: json.globalAddonTitle || 'Accommodation',
+        levels: json.accommodationFees
+      }
+    ];
+  }
   return {
     ...json,
+    globalAddons: formattedAddons,
+    globalAddonTitle: json.globalAddonTitle || (formattedAddons[0]?.title ?? ''),
+    accommodationFees: json.accommodationFees || (formattedAddons[0]?.levels ?? []),
     sponsors: json.sponsors || [],
     exhibitors: json.exhibitors || [],
     partners: json.partners || [],
@@ -103,10 +116,10 @@ export async function listConferences(req, res) {
                 cohortId: cohort._id.toString(),
                 cohortCode: cohort.cohortId,
                 isCohort: true,
-                registrationLink: registrationLink({ ...parent, currentCohortId: cohort._id }),
+                registrationLink: registrationLink({ ...parent, batchNo: cohort.batchNo, currentCohortId: cohort._id }),
               });
             } else {
-              result.push(formatConference({ ...parent, currentCohortId: cohort._id }));
+              result.push(formatConference({ ...parent, batchNo: cohort.batchNo, currentCohortId: cohort._id }));
             }
           }
           if (isDirectlyAssigned) {
@@ -222,7 +235,7 @@ export async function createConference(req, res) {
   const { username } = getUserContext(req);
   const {
     title, description, theme, themeColor, heroThemeColor, day, month, location, eventDate, startDate, endDate, slug,
-    startTime, endTime, brochureUrl, bannerUrl, logoUrl, subjectImageUrl, headerBanners, fees, accommodationFees, tracks, organizerContact,
+    startTime, endTime, brochureUrl, bannerUrl, logoUrl, subjectImageUrl, headerBanners, fees, accommodationFees, globalAddonTitle, globalAddons, tracks, organizerContact,
     subdomain, venue, assignedMentor, venueAddress, venueMapUrl,
     itinerary, speakers, program, faqs, sponsors, exhibitors, guidelines, scientificProgramUrl, termsAndConditions, venueDetails,
     organizingCommittee, partners, mediaPartners, welcomeBannerTitle, welcomeBannerDescription, socialLinks,
@@ -247,6 +260,17 @@ export async function createConference(req, res) {
       : ((sponsors && sponsors.length)
         ? normalizePartners(sponsors)
         : normalizePartners(exhibitors));
+
+    let initialAddons = Array.isArray(globalAddons) ? globalAddons : [];
+    if (initialAddons.length === 0 && Array.isArray(accommodationFees) && accommodationFees.length > 0) {
+      initialAddons = [
+        {
+          id: `addon_${Date.now()}`,
+          title: globalAddonTitle || 'Accommodation',
+          levels: accommodationFees
+        }
+      ];
+    }
 
     const item = await Conference.create({
       title,
@@ -276,7 +300,9 @@ export async function createConference(req, res) {
       subjectImageUrl: subjectImageUrl || '',
       headerBanners: Array.isArray(headerBanners) ? headerBanners : [],
       fees: Array.isArray(fees) ? fees : [],
-      accommodationFees: Array.isArray(accommodationFees) ? accommodationFees : [],
+      globalAddonTitle: globalAddonTitle || (initialAddons[0]?.title ?? ''),
+      globalAddons: initialAddons,
+      accommodationFees: Array.isArray(accommodationFees) ? accommodationFees : (initialAddons[0]?.levels ?? []),
       tracks: Array.isArray(tracks) ? tracks : [],
       organizerContact: organizerContact || {},
       socialLinks: socialLinks || {},
@@ -327,7 +353,7 @@ export async function updateConference(req, res) {
   }
   const {
     title, description, theme, themeColor, heroThemeColor, day, month, location, eventDate, startDate, endDate, slug,
-    startTime, endTime, brochureUrl, bannerUrl, logoUrl, subjectImageUrl, headerBanners, fees, accommodationFees, tracks, organizerContact,
+    startTime, endTime, brochureUrl, bannerUrl, logoUrl, subjectImageUrl, headerBanners, fees, accommodationFees, globalAddonTitle, globalAddons, tracks, organizerContact,
     subdomain, venue, assignedMentor, venueAddress, venueMapUrl,
     itinerary, speakers, program, faqs, sponsors, exhibitors, guidelines, scientificProgramUrl, termsAndConditions, venueDetails,
     organizingCommittee, partners, mediaPartners, welcomeBannerTitle, welcomeBannerDescription, socialLinks,
@@ -399,6 +425,18 @@ export async function updateConference(req, res) {
     if (subjectImageUrl !== undefined) item.subjectImageUrl = subjectImageUrl;
     if (headerBanners !== undefined) item.headerBanners = Array.isArray(headerBanners) ? headerBanners : [];
     if (fees !== undefined) { item.fees = Array.isArray(fees) ? fees : []; item.markModified('fees'); }
+    if (globalAddons !== undefined) {
+      item.globalAddons = Array.isArray(globalAddons) ? globalAddons : [];
+      item.markModified('globalAddons');
+      if (item.globalAddons.length > 0) {
+        if (!globalAddonTitle) item.globalAddonTitle = item.globalAddons[0]?.title || '';
+        if (accommodationFees === undefined) {
+          item.accommodationFees = item.globalAddons[0]?.levels || [];
+          item.markModified('accommodationFees');
+        }
+      }
+    }
+    if (globalAddonTitle !== undefined) item.globalAddonTitle = globalAddonTitle;
     if (accommodationFees !== undefined) { item.accommodationFees = Array.isArray(accommodationFees) ? accommodationFees : []; item.markModified('accommodationFees'); }
     if (tracks !== undefined) item.tracks = Array.isArray(tracks) ? tracks : [];
     if (organizerContact !== undefined) { item.organizerContact = organizerContact; item.markModified('organizerContact'); }
