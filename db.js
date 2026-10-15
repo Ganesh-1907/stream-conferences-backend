@@ -104,19 +104,23 @@ async function migrateCourseCohorts() {
         repaired += 1;
         continue;
       }
-      const current = cohorts.find((ch) => ch.isCurrent) || cohorts[0];
-      if (String(c.currentCohortId || '') !== String(current._id)) {
-        c.currentCohortId = current._id;
+      // Sync currentCohortId with whichever cohort is explicitly primary.
+      // If no cohort is primary, currentCohortId stays null so the root
+      // subdomain opens the main conference (parent) content.
+      const primary = cohorts.find((ch) => ch.isCurrent) || null;
+      const desiredId = primary ? String(primary._id) : '';
+      if (String(c.currentCohortId || '') !== desiredId) {
+        c.currentCohortId = primary ? primary._id : null;
         await c.save();
         repaired += 1;
       }
-      const currentCount = cohorts.filter((ch) => ch.isCurrent).length;
-      if (currentCount > 1 || !current.isCurrent) {
+      // Enforce at most one primary cohort per conference.
+      const primaries = cohorts.filter((ch) => ch.isCurrent);
+      if (primaries.length > 1) {
         await CourseCohort.updateMany(
-          { courseType: 'conference', courseId: c._id, _id: { $ne: current._id } },
+          { courseType: 'conference', courseId: c._id, _id: { $ne: primaries[0]._id } },
           { isCurrent: false }
         );
-        await CourseCohort.findByIdAndUpdate(current._id, { isCurrent: true });
       }
       // Cohorts are fully independent: never copy parent content into them.
       // Only backfill an empty cohort title from parent title (shell identity).
@@ -132,7 +136,7 @@ async function migrateCourseCohorts() {
       console.log(`[Database] Backfilled initial cohort for ${repaired} conference(s)`);
     }
     if (backfilledContent) {
-      console.log(`[Database] Backfilled empty cohort content from parent for ${backfilledContent} cohort(s)`);
+      console.log(`[Database] Backfilled empty cohort title from parent for ${backfilledContent} cohort(s)`);
     }
   } catch (err) {
     console.error('[Database] course cohort migration failed:', err);

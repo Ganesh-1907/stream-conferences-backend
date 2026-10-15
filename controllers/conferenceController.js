@@ -335,8 +335,10 @@ export async function createConference(req, res) {
       announcedBy: username
     });
     try {
-      const cohort = await ensureInitialCohort('conference', item);
-      if (cohort) item.currentCohortId = cohort._id;
+      // Create the first cohort (shell identity only, empty content, not
+      // primary). The root subdomain opens the parent content until someone
+      // explicitly makes a cohort primary.
+      await ensureInitialCohort('conference', item);
     } catch (cohortError) {
       console.error('Initial cohort creation failed for conference', item.eventId, cohortError);
     }

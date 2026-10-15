@@ -159,7 +159,7 @@ export async function ensureInitialCohort(courseType, course) {
       startDate: startDate || null,
       endDate: endDate || null,
       status: deriveStatus(startDate, endDate),
-      isCurrent: true,
+      isCurrent: false,
       assignedMentor: course.assignedMentor || null,
       title: course.title || '',
       // Cohorts are fully independent: content starts empty.
@@ -189,7 +189,7 @@ export async function ensureInitialCohort(courseType, course) {
     taken.startDate = startDate || null;
     taken.endDate = endDate || null;
     taken.status = deriveStatus(startDate, endDate);
-    taken.isCurrent = true;
+    taken.isCurrent = false;
     taken.assignedMentor = course.assignedMentor || taken.assignedMentor || null;
     taken.title = taken.title || course.title || '';
     // Independent: never copy parent content into a cohort.
@@ -198,11 +198,8 @@ export async function ensureInitialCohort(courseType, course) {
     cohort = taken;
   }
 
-  const Model = COURSE_MODEL[courseType];
-  if (Model) {
-    await Model.findByIdAndUpdate(course._id, { currentCohortId: cohort._id });
-  }
-
+  // The initial cohort is not primary: the root subdomain opens the main
+  // conference (parent) content until someone explicitly makes a cohort primary.
   return cohort;
 }
 

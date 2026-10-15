@@ -11,7 +11,7 @@ import { ChatMessage } from './models/ChatMessage.js';
 import { CourseCohort } from './models/CourseCohort.js';
 import { MentorProfile } from './models/MentorProfile.js';
 import { generateSlug } from './services/slug.js';
-import { ensureInitialCohort, buildCohortId, extractContent, setCurrentCohort } from './services/cohortService.js';
+import { ensureInitialCohort, buildCohortId } from './services/cohortService.js';
 
 const MONGO_URI = process.env.DATABASE_URL || 'mongodb://localhost:27017/stream-conf';
 const NOW = Date.now();
@@ -383,7 +383,8 @@ async function seed() {
         status: 'upcoming',
         isCurrent: false,
         assignedMentor: course.assignedMentor || null,
-        content: extractContent(course),
+        // Cohorts are fully independent: extra cohorts also start empty.
+        content: {},
       });
       return cohort;
     };

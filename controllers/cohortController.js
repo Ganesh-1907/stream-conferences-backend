@@ -5,9 +5,7 @@ import {
   listCohorts,
   serializeCohort,
   setCurrentCohort,
-  promoteLatestCohort,
   buildCohortId,
-  extractContent,
 } from '../services/cohortService.js';
 import { sanitizeSubdomain } from '../services/slug.js';
 
@@ -94,8 +92,8 @@ export function createCohortForCourse(courseType) {
       }
 
       const cohortId = candidateId;
-      const existingCount = await CourseCohort.countDocuments({ courseType, courseId: id });
-      const willBeCurrent = Boolean(isCurrent) || existingCount === 0;
+      // A new cohort is only primary if the client explicitly asked for it.
+      const willBeCurrent = Boolean(isCurrent);
 
       let resolvedSubdomain = subdomain ? sanitizeSubdomain(subdomain) : null;
       if (resolvedSubdomain) {
@@ -234,9 +232,11 @@ export async function updateCohort(req, res) {
     if (assignedMentor !== undefined) cohort.assignedMentor = assignedMentor || null;
 
     let becomeCurrent = false;
+    let unsetCurrent = false;
     if (isCurrent === true) {
       becomeCurrent = true;
     } else if (isCurrent === false) {
+      unsetCurrent = Boolean(cohort.isCurrent);
       cohort.isCurrent = false;
     }
 
@@ -245,6 +245,13 @@ export async function updateCohort(req, res) {
     if (becomeCurrent) {
       await setCurrentCohort(cohort.courseType, cohort.courseId, cohort._id);
       cohort.isCurrent = true;
+    } else if (unsetCurrent) {
+      // Keep the parent pointer in sync: unsetting the primary cohort returns
+      // the root subdomain to the main conference (parent) content.
+      const Model = COURSE_MODEL[cohort.courseType];
+      if (Model) {
+        await Model.findByIdAndUpdate(cohort.courseId, { currentCohortId: null });
+      }
     }
 
     res.json(serializeCohort(cohort));
@@ -301,7 +308,13 @@ export async function deleteCohort(req, res) {
     await CourseCohort.findByIdAndDelete(id);
 
     if (isCurrent) {
-      await promoteLatestCohort(courseType, courseId);
+      // Deleting the primary cohort returns the root subdomain to the main
+      // conference (parent) content. No auto-promotion — making a cohort
+      // primary is always an explicit action.
+      const Model = COURSE_MODEL[courseType];
+      if (Model) {
+        await Model.findByIdAndUpdate(courseId, { currentCohortId: null });
+      }
     }
 
     res.json({ success: true });
