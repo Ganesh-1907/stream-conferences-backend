@@ -3,7 +3,7 @@ import { User } from './models/User.js';
 import { Conference } from './models/Conference.js';
 import { CourseCohort } from './models/CourseCohort.js';
 import { generateSlug, sanitizeSubdomain } from './services/slug.js';
-import { ensureInitialCohort, extractContent } from './services/cohortService.js';
+import { ensureInitialCohort } from './services/cohortService.js';
 
 const MONGO_URI = process.env.DATABASE_URL || 'mongodb://localhost:27017/stream-conf';
 
