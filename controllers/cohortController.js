@@ -7,6 +7,7 @@ import {
   setCurrentCohort,
   promoteLatestCohort,
   buildCohortId,
+  extractContent,
 } from '../services/cohortService.js';
 import { sanitizeSubdomain } from '../services/slug.js';
 
@@ -110,7 +111,9 @@ export function createCohortForCourse(courseType) {
         }
       }
 
-      const extraContent = content ? { ...content } : {};
+      // Seed from parent when no explicit content is sent, so the cohort starts
+      // with a full independent copy (no runtime fallback to the parent).
+      let extraContent = content ? { ...content } : {};
       const CONTENT_KEYS = [
         'description', 'theme', 'themeColor', 'heroThemeColor', 'location', 'venue', 'venueAddress', 'venueMapUrl',
         'startTime', 'endTime', 'speaker', 'brochureUrl', 'bannerUrl', 'logoUrl', 'subjectImageUrl', 'headerBanners',
@@ -118,14 +121,18 @@ export function createCohortForCourse(courseType) {
         'faqs', 'sponsors', 'exhibitors', 'partners', 'mediaPartners', 'guidelines',
         'scientificProgramUrl', 'termsAndConditions', 'organizingCommittee', 'venueDetails',
         'welcomeBannerTitle', 'welcomeBannerDescription', 'gtmCode', 'gaCode', 'mcCode',
-        'metaTitle', 'metaDescription',
-        'globalAddons', 'globalAddonTitle', 'accommodationFees'
+        'globalAddons', 'globalAddonTitle', 'accommodationFees', 'feeLevels',
+        'colorTheme', 'about', 'terms', 'privacy', 'registerSteps', 'brochure',
+        'shortTitle', 'primaryColor'
       ];
       for (const k of CONTENT_KEYS) {
         if (req.body[k] !== undefined && extraContent[k] === undefined) {
           extraContent[k] = req.body[k];
         }
       }
+      // Merge parent content under any explicit overrides so empty fields
+      // inherit once at creation time (then stay independent forever).
+      extraContent = { ...extractContent(courseDoc), ...extraContent };
 
       const cohort = await CourseCohort.create({
         courseType,
@@ -133,7 +140,7 @@ export function createCohortForCourse(courseType) {
         cohortId,
         year: yearNum,
         batchNo: batchNum,
-        title: title || '',
+        title: title || courseDoc.title || '',
         startDate: startDateParsed,
         endDate: endDateParsed,
         status: status || 'upcoming',
@@ -205,7 +212,9 @@ export async function updateCohort(req, res) {
     if (endDate !== undefined) cohort.endDate = parseDate(endDate);
     if (status !== undefined) cohort.status = status;
     if (content !== undefined) {
-      cohort.content = content || {};
+      // Merge instead of replace so partial PUTs never wipe existing keys.
+      // Explicit null/empty-string values clear individual fields; undefined is ignored.
+      cohort.content = { ...(cohort.content || {}), ...(content || {}) };
       cohort.markModified('content');
     }
     if (subdomain !== undefined) {

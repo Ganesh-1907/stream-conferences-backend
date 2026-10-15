@@ -12,7 +12,11 @@ const CONTENT_FIELDS = [
   'brochureUrl', 'bannerUrl', 'logoUrl', 'headerBanners', 'fees', 'tracks',
   'organizerContact', 'itinerary', 'speakers', 'program', 'faqs', 'sponsors', 'exhibitors',
   'partners', 'mediaPartners', 'guidelines', 'scientificProgramUrl', 'termsAndConditions', 'organizingCommittee', 'venueDetails',
-  'globalAddons', 'globalAddonTitle', 'accommodationFees',
+  'globalAddons', 'globalAddonTitle', 'accommodationFees', 'feeLevels',
+  'subjectImageUrl', 'welcomeBannerTitle', 'welcomeBannerDescription', 'socialLinks',
+  'themeColor', 'heroThemeColor', 'colorTheme', 'gtmCode', 'gaCode', 'mcCode', 'metaTitle', 'metaDescription',
+  'about', 'terms', 'privacy', 'registerSteps', 'brochure',
+  'shortTitle', 'primaryColor'
 ];
 
 export function extractContent(doc) {
@@ -157,7 +161,9 @@ export async function ensureInitialCohort(courseType, course) {
       status: deriveStatus(startDate, endDate),
       isCurrent: true,
       assignedMentor: course.assignedMentor || null,
-      content: {},
+      title: course.title || '',
+      // Snapshot parent content so each cohort starts independent (no runtime fallback).
+      content: extractContent(course),
     });
   } catch (error) {
     // The generated cohortId was already taken, normally by a leftover cohort
@@ -184,6 +190,8 @@ export async function ensureInitialCohort(courseType, course) {
     taken.status = deriveStatus(startDate, endDate);
     taken.isCurrent = true;
     taken.assignedMentor = course.assignedMentor || taken.assignedMentor || null;
+    taken.title = taken.title || course.title || '';
+    taken.content = extractContent(course);
     await taken.save();
     cohort = taken;
   }

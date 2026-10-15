@@ -3,7 +3,7 @@ import { User } from './models/User.js';
 import { Conference } from './models/Conference.js';
 import { CourseCohort } from './models/CourseCohort.js';
 import { generateSlug, sanitizeSubdomain } from './services/slug.js';
-import { ensureInitialCohort } from './services/cohortService.js';
+import { ensureInitialCohort, extractContent } from './services/cohortService.js';
 
 const MONGO_URI = process.env.DATABASE_URL || 'mongodb://localhost:27017/stream-conf';
 
@@ -92,6 +92,7 @@ async function migrateCourseCohorts() {
     }
 
     let repaired = 0;
+    let backfilledContent = 0;
     for (const c of conferences) {
       const cohorts = await CourseCohort.find({ courseType: 'conference', courseId: c._id }).lean();
       if (!cohorts.length) {
@@ -117,10 +118,30 @@ async function migrateCourseCohorts() {
         );
         await CourseCohort.findByIdAndUpdate(current._id, { isCurrent: true });
       }
+      // Snapshot parent content into any cohort that still has empty content,
+      // so each cohort holds an independent copy (no runtime fallback needed).
+      // Treat content with no keys OR only empty/null/'' values as empty.
+      const parentSnapshot = extractContent(c);
+      for (const ch of cohorts) {
+        const existing = ch.content || {};
+        const meaningfulKeys = existing && typeof existing === 'object'
+          ? Object.keys(existing).filter((k) => {
+              const v = existing[k];
+              return v !== undefined && v !== null && v !== '' && !(Array.isArray(v) && v.length === 0);
+            })
+          : [];
+        if (meaningfulKeys.length === 0 && parentSnapshot && Object.keys(parentSnapshot).length > 0) {
+          await CourseCohort.findByIdAndUpdate(ch._id, { $set: { content: parentSnapshot } });
+          backfilledContent += 1;
+        }
+      }
     }
 
     if (repaired) {
       console.log(`[Database] Backfilled initial cohort for ${repaired} conference(s)`);
+    }
+    if (backfilledContent) {
+      console.log(`[Database] Backfilled empty cohort content from parent for ${backfilledContent} cohort(s)`);
     }
   } catch (err) {
     console.error('[Database] course cohort migration failed:', err);

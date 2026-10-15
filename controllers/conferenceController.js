@@ -250,7 +250,13 @@ export async function createConference(req, res) {
     if (!SUBDOMAIN_RE.test(baseSubdomain)) {
       return res.status(400).json({ error: 'Subdomain must contain only lowercase letters, numbers, and hyphens' });
     }
-    const resolvedSubdomain = await uniqueSubdomain(baseSubdomain, Conference);
+    const existingConf = await Conference.findOne({ subdomain: baseSubdomain });
+    if (existingConf) {
+      return res.status(400).json({
+        error: `A conference with subdomain "${baseSubdomain}" already exists. Please choose a different subdomain or create a cohort under the existing conference.`
+      });
+    }
+    const resolvedSubdomain = baseSubdomain;
 
     const start = startDate ? new Date(startDate) : (eventDate ? new Date(eventDate) : null);
     const end = endDate ? new Date(endDate) : (startDate ? start : null);
@@ -338,6 +344,13 @@ export async function createConference(req, res) {
     res.status(201).json(formatConference(item));
   } catch (error) {
     console.error('Create conference error:', error);
+    if (error && error.code === 11000) {
+      if (error.keyPattern && error.keyPattern.subdomain) {
+        return res.status(400).json({
+          error: 'A conference with this subdomain already exists. Please choose a different subdomain or create a cohort under the existing conference.'
+        });
+      }
+    }
     res.status(500).json({ error: 'Internal server error' });
   }
 }
@@ -412,7 +425,13 @@ export async function updateConference(req, res) {
         return res.status(400).json({ error: 'Subdomain must contain only lowercase letters, numbers, and hyphens' });
       }
       if (cleaned !== item.subdomain) {
-        item.subdomain = await uniqueSubdomain(cleaned, Conference);
+        const existingConf = await Conference.findOne({ subdomain: cleaned, _id: { $ne: item._id } });
+        if (existingConf) {
+          return res.status(400).json({
+            error: `A conference with subdomain "${cleaned}" already exists. Please choose a different subdomain or create a cohort under the existing conference.`
+          });
+        }
+        item.subdomain = cleaned;
       }
     }
     if (assignedMentor !== undefined) item.assignedMentor = assignedMentor || null;
@@ -481,6 +500,13 @@ export async function updateConference(req, res) {
   } catch (error) {
     console.error('Update conference error:', error.message);
     console.error('Error stack:', error.stack);
+    if (error && error.code === 11000) {
+      if (error.keyPattern && error.keyPattern.subdomain) {
+        return res.status(400).json({
+          error: 'A conference with this subdomain already exists. Please choose a different subdomain or create a cohort under the existing conference.'
+        });
+      }
+    }
     if (error.name === 'ValidationError') {
       console.error('Validation errors:', error.errors);
     }
