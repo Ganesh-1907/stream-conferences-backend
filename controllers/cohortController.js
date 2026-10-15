@@ -111,8 +111,8 @@ export function createCohortForCourse(courseType) {
         }
       }
 
-      // Seed from parent when no explicit content is sent, so the cohort starts
-      // with a full independent copy (no runtime fallback to the parent).
+      // Cohorts are fully independent: only explicitly provided content is stored.
+      // Nothing is copied or inherited from the parent conference.
       let extraContent = content ? { ...content } : {};
       const CONTENT_KEYS = [
         'description', 'theme', 'themeColor', 'heroThemeColor', 'location', 'venue', 'venueAddress', 'venueMapUrl',
@@ -130,9 +130,6 @@ export function createCohortForCourse(courseType) {
           extraContent[k] = req.body[k];
         }
       }
-      // Merge parent content under any explicit overrides so empty fields
-      // inherit once at creation time (then stay independent forever).
-      extraContent = { ...extractContent(courseDoc), ...extraContent };
 
       const cohort = await CourseCohort.create({
         courseType,

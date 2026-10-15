@@ -118,23 +118,9 @@ async function migrateCourseCohorts() {
         );
         await CourseCohort.findByIdAndUpdate(current._id, { isCurrent: true });
       }
-      // Snapshot parent content into any cohort that still has empty content,
-      // so each cohort holds an independent copy (no runtime fallback needed).
-      // Treat content with no keys OR only empty/null/'' values as empty.
-      // Also backfill empty cohort title from parent title (title is top-level, not content).
-      const parentSnapshot = extractContent(c);
+      // Cohorts are fully independent: never copy parent content into them.
+      // Only backfill an empty cohort title from parent title (shell identity).
       for (const ch of cohorts) {
-        const existing = ch.content || {};
-        const meaningfulKeys = existing && typeof existing === 'object'
-          ? Object.keys(existing).filter((k) => {
-              const v = existing[k];
-              return v !== undefined && v !== null && v !== '' && !(Array.isArray(v) && v.length === 0);
-            })
-          : [];
-        if (meaningfulKeys.length === 0 && parentSnapshot && Object.keys(parentSnapshot).length > 0) {
-          await CourseCohort.findByIdAndUpdate(ch._id, { $set: { content: parentSnapshot } });
-          backfilledContent += 1;
-        }
         if (!ch.title && c.title) {
           await CourseCohort.findByIdAndUpdate(ch._id, { $set: { title: c.title } });
           backfilledContent += 1;

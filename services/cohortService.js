@@ -162,8 +162,9 @@ export async function ensureInitialCohort(courseType, course) {
       isCurrent: true,
       assignedMentor: course.assignedMentor || null,
       title: course.title || '',
-      // Snapshot parent content so each cohort starts independent (no runtime fallback).
-      content: extractContent(course),
+      // Cohorts are fully independent: content starts empty.
+      // Nothing is copied from the parent except the shared title/subdomain shell.
+      content: {},
     });
   } catch (error) {
     // The generated cohortId was already taken, normally by a leftover cohort
@@ -191,7 +192,8 @@ export async function ensureInitialCohort(courseType, course) {
     taken.isCurrent = true;
     taken.assignedMentor = course.assignedMentor || taken.assignedMentor || null;
     taken.title = taken.title || course.title || '';
-    taken.content = extractContent(course);
+    // Independent: never copy parent content into a cohort.
+    taken.content = {};
     await taken.save();
     cohort = taken;
   }
